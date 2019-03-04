@@ -1,0 +1,6 @@
+.idea/
+data/
+epochs/*
+!epochs/.gitkeep
+venv/
+.DS_Store
