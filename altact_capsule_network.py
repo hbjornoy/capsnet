@@ -48,6 +48,8 @@ class CapsuleLayer(nn.Module):
 
         self.num_capsules = num_capsules
 
+        self.sigmoid = nn.Sigmoid()
+
         if num_route_nodes != -1:
             self.route_weights = nn.Parameter(torch.randn(num_capsules, num_route_nodes, in_channels, out_channels))
         else:
@@ -66,8 +68,8 @@ class CapsuleLayer(nn.Module):
 
             logits = Variable(torch.zeros(*priors.size())).cuda()
             for i in range(self.num_iterations):
-                probs = softmax(logits, dim=2)
-                outputs = self.squash((probs * priors).sum(dim=2, keepdim=True))
+                probs = softmax(logits, dim=2) # 
+                outputs = self.sigmoid((probs * priors).sum(dim=2, keepdim=True))  # CHANGED, try to check dim before and after self.squash
 
                 if i != self.num_iterations - 1:
                     delta_logits = (priors * outputs).sum(dim=-1, keepdim=True)
@@ -75,7 +77,7 @@ class CapsuleLayer(nn.Module):
         else:
             outputs = [capsule(x).view(x.size(0), -1, 1) for capsule in self.capsules]
             outputs = torch.cat(outputs, dim=-1)
-            outputs = self.squash(outputs)
+            outputs = self.sigmoid(outputs)                                        # CHANGED, try to check dim before and after self.squash
 
         return outputs
 
