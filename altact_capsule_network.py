@@ -98,7 +98,7 @@ class CapsuleNet(nn.Module):
             nn.Linear(512, 1024),
             nn.ReLU(inplace=True),
             nn.Linear(1024, 784),
-            nn.Sigmoid()
+            # nn.Sigmoid() # because crossentropy has a softmax
         )
 
     def forward(self, x, y=None):
@@ -125,17 +125,18 @@ class CapsuleLoss(nn.Module):
         self.reconstruction_loss = nn.MSELoss(size_average=False)
 
     def forward(self, images, labels, classes, reconstructions):
+        """
         left = F.relu(0.9 - classes, inplace=True) ** 2
         right = F.relu(classes - 0.1, inplace=True) ** 2
 
         margin_loss = labels * left + 0.5 * (1. - labels) * right
         margin_loss = margin_loss.sum()
-
+        """
         assert torch.numel(images) == torch.numel(reconstructions)
         images = images.view(reconstructions.size()[0], -1)
         reconstruction_loss = self.reconstruction_loss(reconstructions, images)
 
-        return (margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
+        return nn.CrossEntropyLoss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0) #(margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
 
 
 if __name__ == "__main__":
