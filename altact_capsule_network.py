@@ -48,7 +48,7 @@ class CapsuleLayer(nn.Module):
 
         self.num_capsules = num_capsules
 
-        self.sigmoid = nn.Sigmoid()
+        self.activation = nn.Sigmoid()
 
         if num_route_nodes != -1:
             self.route_weights = nn.Parameter(torch.randn(num_capsules, num_route_nodes, in_channels, out_channels))
@@ -60,7 +60,8 @@ class CapsuleLayer(nn.Module):
     def squash(self, tensor, dim=-1):
         squared_norm = (tensor ** 2).sum(dim=dim, keepdim=True)
         scale = squared_norm / (1 + squared_norm)
-        return scale * tensor / torch.sqrt(squared_norm)
+        return scale * tensor / torch.sqrt(squared_norm) 
+
 
     def forward(self, x):
         if self.num_route_nodes != -1:
@@ -69,7 +70,7 @@ class CapsuleLayer(nn.Module):
             logits = Variable(torch.zeros(*priors.size())).cuda()
             for i in range(self.num_iterations):
                 probs = softmax(logits, dim=2) # 
-                outputs = self.sigmoid((probs * priors).sum(dim=2, keepdim=True))  # CHANGED, try to check dim before and after self.squash
+                outputs = 2*(self.activation((probs * priors).sum(dim=2, keepdim=True)) - 0.5)    # CHANGED, try to check dim before and after self.squash
 
                 if i != self.num_iterations - 1:
                     delta_logits = (priors * outputs).sum(dim=-1, keepdim=True)
@@ -77,7 +78,7 @@ class CapsuleLayer(nn.Module):
         else:
             outputs = [capsule(x).view(x.size(0), -1, 1) for capsule in self.capsules]
             outputs = torch.cat(outputs, dim=-1)
-            outputs = self.sigmoid(outputs)                                        # CHANGED, try to check dim before and after self.squash
+            outputs = 2*(self.activation(outputs) - 0.5)                                        # CHANGED, try to check dim before and after self.squash
 
         return outputs
 
@@ -118,6 +119,9 @@ class CapsuleNet(nn.Module):
 
         return classes, reconstructions
 
+def cross_entropy_one_hot(input, target):
+    _, labels = target.max(dim=1)
+    return nn.CrossEntropyLoss()(input, labels)
 
 class CapsuleLoss(nn.Module):
     def __init__(self):
@@ -135,8 +139,8 @@ class CapsuleLoss(nn.Module):
         assert torch.numel(images) == torch.numel(reconstructions)
         images = images.view(reconstructions.size()[0], -1)
         reconstruction_loss = self.reconstruction_loss(reconstructions, images)
-
-        return nn.CrossEntropyLoss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0) #(margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
+        return (23*cross_entropy_one_hot(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0) 
+#(margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
 
 
 if __name__ == "__main__":
