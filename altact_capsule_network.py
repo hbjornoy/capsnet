@@ -136,7 +136,7 @@ class CapsuleLoss(nn.Module):
         images = images.view(reconstructions.size()[0], -1)
         reconstruction_loss = self.reconstruction_loss(reconstructions, images)
 
-        return nn.CrossEntropyLoss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0) #(margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
+        return (nn.CrossEntropyLoss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0) #(margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
 
 
 if __name__ == "__main__":
