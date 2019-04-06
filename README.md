@@ -1,7 +1,33 @@
 # Dynamic Routing Between Capsules
 
-A barebones CUDA-enabled PyTorch implementation of the CapsNet architecture in the paper "Dynamic Routing Between Capsules" by [Kenta Iwasaki](https://github.com/iwasaki-kenta) on behalf of Gram.AI.
+Based of a barebones CUDA-enabled PyTorch implementation of the CapsNet architecture in the paper "Dynamic Routing Between Capsules" by [Kenta Iwasaki](https://github.com/iwasaki-kenta) on behalf of Gram.AI.
 
+##### Getting started:
+1. Clone repo: 
+``git clone git@github.com:hbjornoy/capsnet.git``
+2. Create your virtual environment, example:
+``virtualenv -p /usr/bin/python3 venv``
+3. Activate environment:
+``source venv/bin/activate``
+4. Install libraries, example uses pip3 with Python 3.6.7:
+``install.sh``
+5. open new process, preferrably with ``screen -S name``
+	- activate environment
+	- Run visdom, a server 
+6. train model:
+``python3 capsule_network.py``
+
+##### Workflow:
+If you are running on a remote server, this is a way to see the your result from visdom:
+- Input the following line into you ~/.ssh/config file, if you don't have one, create one
+``LocalForward 127.0.0.1:8097 127.0.0.1:8097``
+
+1. start up visdom as a backgroundprocess that logs to file:
+``visdom 2> logs/random.log &``
+2. train network
+``python3 capsule_network.py`` or alternative versions
+
+Description of libraries  used:
 Training for the model is done using [TorchNet](https://github.com/pytorch/tnt), with MNIST dataset loading and preprocessing done with [TorchVision](https://github.com/pytorch/vision).
 
 ## Description
