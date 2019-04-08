@@ -118,7 +118,7 @@ class CapsuleNet(nn.Module):
             nn.Linear(512, 1024),
             nn.ReLU(inplace=True),
             nn.Linear(1024, 784),
-            nn.Sigmoid()   # should is this dependant on Loss function or only MSE-loss?
+            #nn.Sigmoid()   # should is this dependant on Loss function or only MSE-loss?
         )
 
     def forward(self, x, y=None):
@@ -151,7 +151,7 @@ class CapsuleLoss(nn.Module):
         images = images.view(reconstructions.size()[0], -1)
         reconstruction_loss = self.reconstruction_loss(reconstructions, images)
 
-        return self.loss_function(labels, classes, reconstruction_loss)
+        return self.loss_function(images, labels, classes, reconstruction_loss)
 
     def define_loss_function(self, code_word):
         if code_word == 'margin':
@@ -161,7 +161,7 @@ class CapsuleLoss(nn.Module):
         else:
             raise Exception(' Loss function not valid. The code_word used was : {}'.format(code_word))
 
-    def margin_loss(self, labels, classes, reconstruction_loss):
+    def margin_loss(self, images, labels, classes, reconstruction_loss):
         left = F.relu(0.9 - classes, inplace=True) ** 2
         right = F.relu(classes - 0.1, inplace=True) ** 2
 
@@ -170,22 +170,22 @@ class CapsuleLoss(nn.Module):
 
         return (margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
 
-    def crossentropy(classes, labels):
+    def crossentropy(self, images, labels, classes, reconstruction_loss):
         # Coeff scales the loss to the approx. the same magnitude as orig. -> reconstruction effect is approx. the same
         scaling_coeff = 23 
         _, labels = labels.max(dim=1)
-        return (23*nn.CrossEntropyLoss() + 0.0005 * reconstruction_loss) / images.size(0)
+        return (23*nn.CrossEntropyLoss()(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
 
 
 
 if __name__ == "__main__":
     from torch.autograd import Variable
     from torch.optim import Adam
-    """
+    
     import torchnet as tnt
     from torchnet.engine import Engine
     from torchnet.logger import VisdomPlotLogger, VisdomLogger
-    """
+    
     from torchvision.utils import make_grid
     from torchvision.datasets.mnist import MNIST
     from tqdm import tqdm
