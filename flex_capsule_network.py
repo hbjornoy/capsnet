@@ -179,14 +179,13 @@ class CapsuleLoss(nn.Module):
 
     def crossentropy(self, images, labels, classes, reconstruction_loss):
         # Coeff scales the loss to the approx. the same magnitude as orig. -> reconstruction effect is approx. the same
-        scaling_coeff = 23 
+        s_coeff = 23 
         _, labels = labels.max(dim=1)
-        return (23*nn.CrossEntropyLoss()(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
+        return (s_coeff*nn.functional.cross_entropy(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
 
     def mse(self, images, labels, classes, reconstruction_loss):
-        scaling_coeff = 23
-        _, labels = labels.max(dim=1)
-        return (23*nn.MSELoss()(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
+        s_coeff = 23
+        return (s_coeff*nn.functional.mse_loss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
 
 
     def spread_loss(self, images, labels, classes, reconstruction_loss):
@@ -212,7 +211,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
 
-    model = CapsuleNet(act_func=args.act_func)
+    model = CapsuleNet(act_func=args.act)
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
     model.cuda()
 
@@ -235,7 +234,7 @@ if __name__ == "__main__":
     ground_truth_logger = VisdomLogger('image', opts={'title': 'Ground Truth'})
     reconstruction_logger = VisdomLogger('image', opts={'title': 'Reconstruction'})
 
-    capsule_loss = CapsuleLoss(loss_func=args.loss_func)
+    capsule_loss = CapsuleLoss(loss_func=args.loss)
 
 
     def get_iterator(mode):
