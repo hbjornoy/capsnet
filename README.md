@@ -4,7 +4,7 @@ Based of a barebones CUDA-enabled PyTorch implementation of the CapsNet architec
 
 ##### Getting started:
 1. Clone repo: 
-``git clone git@github.com:hbjornoy/capsnet.git``
+``git clone git@github.com:hbjornoy/capsnet.git`` and enter folder ``cd capsnet``
 2. Create your virtual environment, example:
 ``virtualenv -p /usr/bin/python3 venv``
 3. Activate environment:
