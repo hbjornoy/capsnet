@@ -10,7 +10,7 @@ Based of a barebones CUDA-enabled PyTorch implementation of the CapsNet architec
 3. Activate environment:
 ``source venv/bin/activate``
 4. Install libraries, example uses pip3 with Python 3.6.7:
-``install.sh``
+``bash install.sh``
 5. open new process, preferrably with ``screen -S name``
 	- activate environment
 	- Run visdom, a server 
