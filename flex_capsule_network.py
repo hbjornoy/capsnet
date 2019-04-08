@@ -23,9 +23,9 @@ NUM_ROUTING_ITERATIONS = 3
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Dynamic-Routing-between-capsules implementation')
-parser.add_argument('--act-func', type=str, default='squash', metavar='AF',
+parser.add_argument('--act', type=str, default='squash', metavar='A',
                     help='activation-function (default: squash)')
-parser.add_argument('--loss-func', type=str, default='margin', metavar='LF',
+parser.add_argument('--loss', type=str, default='margin', metavar='L',
                     help='loss function (default: margin)')
 
 
@@ -73,6 +73,10 @@ class CapsuleLayer(nn.Module):
             return self.squash
         elif code_word == 'sigmoid':
             return nn.Sigmoid
+        elif code_word == 'relu':
+            return nn.ReLU
+        elif code_word == 'lrelu':
+            return nn.LeakyReLU
         else:
             raise Exception(' Activation function not valid. The code_word used was : {}'.format(code_word))
 
@@ -81,6 +85,7 @@ class CapsuleLayer(nn.Module):
         squared_norm = (tensor ** 2).sum(dim=dim, keepdim=True)
         scale = squared_norm / (1 + squared_norm)
         return scale * tensor / torch.sqrt(squared_norm)
+
 
     def forward(self, x):
         if self.num_route_nodes != -1:
@@ -158,6 +163,8 @@ class CapsuleLoss(nn.Module):
             return self.margin_loss
         elif code_word == 'crossentropy':
             return self.crossentropy
+        elif code_word == 'mse':
+            return self.mse
         else:
             raise Exception(' Loss function not valid. The code_word used was : {}'.format(code_word))
 
@@ -175,6 +182,17 @@ class CapsuleLoss(nn.Module):
         scaling_coeff = 23 
         _, labels = labels.max(dim=1)
         return (23*nn.CrossEntropyLoss()(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
+
+    def mse(self, images, labels, classes, reconstruction_loss):
+        scaling_coeff = 23
+        _, labels = labels.max(dim=1)
+        return (23*nn.MSELoss()(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
+
+
+    def spread_loss(self, images, labels, classes, reconstruction_loss):
+
+
+        return 0
 
 
 
