@@ -10,7 +10,7 @@ Based of a barebones CUDA-enabled PyTorch implementation of the CapsNet architec
 3. Activate environment:
 ``source venv/bin/activate``
 4. Install libraries, example uses pip3 with Python 3.6.7:
-``install.sh``
+``bash install.sh``
 5. open new process, preferrably with ``screen -S name``
 	- activate environment
 	- Run visdom, a server 
@@ -19,7 +19,7 @@ Based of a barebones CUDA-enabled PyTorch implementation of the CapsNet architec
 
 ##### Workflow:
 If you are running on a remote server, this is a way to see the your result from visdom:
-- Input the following line into you ~/.ssh/config file, if you don't have one, create one
+- Input the following line into you ~/.ssh/config file on your LOCAL computer, if you don't have one, create one
 ``LocalForward 127.0.0.1:8097 127.0.0.1:8097``
 
 1. start up visdom as a backgroundprocess that logs to file:
