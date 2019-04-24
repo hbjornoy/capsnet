@@ -24,9 +24,9 @@ NUM_ROUTING_ITERATIONS = 3
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Dynamic-Routing-between-capsules implementation')
 parser.add_argument('--act', type=str, default='squash', metavar='A',
-                    help='activation-function (default: squash)')
+                    help='activation-function (default: squash, others: sigmoid, relu, lrelu))')
 parser.add_argument('--loss', type=str, default='margin', metavar='L',
-                    help='loss function (default: margin)')
+                    help='loss function (default: margin, others: crossentropy, mse)')
 
 
 def softmax(input, dim=1):
@@ -228,11 +228,10 @@ if __name__ == "__main__":
     train_error_logger = VisdomPlotLogger('line', opts={'title': 'Train Accuracy'})
     test_loss_logger = VisdomPlotLogger('line', opts={'title': 'Test Loss'})
     test_accuracy_logger = VisdomPlotLogger('line', opts={'title': 'Test Accuracy'})
-    confusion_logger = VisdomLogger('heatmap', opts={'title': 'Confusion matrix',
-                                                     'columnnames': list(range(NUM_CLASSES)),
-                                                     'rownames': list(range(NUM_CLASSES))})
+    # confusion_logger = VisdomLogger('heatmap', opts={'title': 'Confusion matrix', 'columnnames': list(range(NUM_CLASSES)), 'rownames': list(range(NUM_CLASSES))})
     ground_truth_logger = VisdomLogger('image', opts={'title': 'Ground Truth'})
     reconstruction_logger = VisdomLogger('image', opts={'title': 'Reconstruction'})
+    reconstruction_loss_logger = VisdomPlotLogger('line', opts={'title': 'Reconstruction Loss'})
 
     capsule_loss = CapsuleLoss(loss_func=args.loss)
 
@@ -319,6 +318,13 @@ if __name__ == "__main__":
             make_grid(ground_truth, nrow=int(BATCH_SIZE ** 0.5), normalize=True, range=(0, 1)).numpy())
         reconstruction_logger.log(
             make_grid(reconstruction, nrow=int(BATCH_SIZE ** 0.5), normalize=True, range=(0, 1)).numpy())
+
+        print("GT: ", ground_truth)
+        print("RC: ",reconstruction)
+        print(abs(reconstruction - ground_truth))
+        print("error_pic", make_grid(abs(reconstruction - ground_truth), nrow=int(BATCH_SIZE ** 0.5), normalize=True, range=(0, 1)).numpy()))
+
+        reconstruction_loss_logger(state['epoch'], sum(abs(reconstruction - ground_truth)))
 
     # def on_start(state):
     #     state['epoch'] = 327
