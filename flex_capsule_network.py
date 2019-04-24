@@ -324,7 +324,10 @@ if __name__ == "__main__":
         print(abs(reconstruction - ground_truth))
         print("error_pic", make_grid(abs(reconstruction - ground_truth), nrow=int(BATCH_SIZE ** 0.5), normalize=True, range=(0, 1)).numpy()))
 
-        reconstruction_loss_logger(state['epoch'], sum(abs(reconstruction - ground_truth)))
+        #assert torch.numel(images) == torch.numel(reconstructions)
+        #images = images.view(reconstructions.size()[0], -1)
+
+        reconstruction_loss_logger(state['epoch'], nn.MSELoss(size_average=False)(reconstruction, ground_truth)) # log reconstruction loss on unseen photos
 
     # def on_start(state):
     #     state['epoch'] = 327
