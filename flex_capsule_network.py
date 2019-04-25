@@ -24,9 +24,9 @@ NUM_ROUTING_ITERATIONS = 3
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Dynamic-Routing-between-capsules implementation')
 parser.add_argument('--act', type=str, default='squash', metavar='A',
-                    help='activation-function (default: squash, others: sigmoid, relu, lrelu))')
+                    help='activation-function (default: squash, others: sig, relu, lrelu))')
 parser.add_argument('--loss', type=str, default='margin', metavar='L',
-                    help='loss function (default: margin, others: crossentropy, mse)')
+                    help='loss function (default: margin, others: ce, mse)')
 
 
 def softmax(input, dim=1):
@@ -71,7 +71,7 @@ class CapsuleLayer(nn.Module):
     def define_activation_function(self, code_word):
         if code_word == 'squash':
             return self.squash
-        elif code_word == 'sigmoid':
+        elif code_word == 'sig':
             return nn.Sigmoid
         elif code_word == 'relu':
             return nn.ReLU
@@ -161,7 +161,7 @@ class CapsuleLoss(nn.Module):
     def define_loss_function(self, code_word):
         if code_word == 'margin':
             return self.margin_loss
-        elif code_word == 'crossentropy':
+        elif code_word == 'ce':
             return self.crossentropy
         elif code_word == 'mse':
             return self.mse
@@ -210,6 +210,7 @@ if __name__ == "__main__":
     global args
     args = parser.parse_args()
     print(args)
+    visdom_env = str(args.act + "-" + args.loss)
 
     model = CapsuleNet(act_func=args.act)
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
@@ -222,16 +223,38 @@ if __name__ == "__main__":
     engine = Engine()
     meter_loss = tnt.meter.AverageValueMeter()
     meter_accuracy = tnt.meter.ClassErrorMeter(accuracy=True)
-    confusion_meter = tnt.meter.ConfusionMeter(NUM_CLASSES, normalized=True)
+    #confusion_meter = tnt.meter.ConfusionMeter(NUM_CLASSES, normalized=True)
+    layoutoptions = {'plotly': {'legend': dict(x=0.8, y=0.5, traceorder='normal', font=dict(family='sans-serif',size=12,color='#000'), bgcolor='#E2E2E2', bordercolor='#FFFFFF',borderwidth=2)}}
 
-    train_loss_logger = VisdomPlotLogger('line', opts={'title': 'Train Loss'})
-    train_error_logger = VisdomPlotLogger('line', opts={'title': 'Train Accuracy'})
-    test_loss_logger = VisdomPlotLogger('line', opts={'title': 'Test Loss'})
-    test_accuracy_logger = VisdomPlotLogger('line', opts={'title': 'Test Accuracy'})
-    # confusion_logger = VisdomLogger('heatmap', opts={'title': 'Confusion matrix', 'columnnames': list(range(NUM_CLASSES)), 'rownames': list(range(NUM_CLASSES))})
-    ground_truth_logger = VisdomLogger('image', opts={'title': 'Ground Truth'})
-    reconstruction_logger = VisdomLogger('image', opts={'title': 'Reconstruction'})
-    reconstruction_loss_logger = VisdomPlotLogger('line', opts={'title': 'Reconstruction Loss'})
+    train_loss_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Train Loss', 
+                                                                                'xlabel': 'Epochs', 
+                                                                                'ylabel': 'Train loss', 
+                                                                                'legend': [visdom_env],
+                                                                                'layoutopts': layoutoptions})
+    train_error_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Train Accuracy', 
+                                                                                'xlabel': 'Epochs', 
+                                                                                'ylabel': 'Train accuracy', 
+                                                                                'legend': [visdom_env],
+                                                                                'layoutopts': layoutoptions})
+    test_loss_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Test Loss', 
+                                                                                'xlabel': 'Epochs', 
+                                                                                'ylabel': 'Test loss', 
+                                                                                'legend': [visdom_env],
+                                                                                'layoutopts': layoutoptions})
+    test_accuracy_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Test Accuracy', 
+                                                                                'xlabel': 'Epochs', 
+                                                                                'ylabel': 'Test accuracy', 
+                                                                                'legend': [visdom_env],
+                                                                                'layoutopts': layoutoptions})
+    # confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': list(range(NUM_CLASSES)), 'rownames': list(range(NUM_CLASSES))})
+    ground_truth_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Ground Truth'})
+    reconstruction_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction'})
+    reconstruction_error_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction Error'})
+    reconstruction_loss_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Reconstruction Loss', 
+                                                                                'xlabel': 'Epochs', 
+                                                                                'ylabel': 'Reconstruction Loss', 
+                                                                                'legend': [visdom_env],
+                                                                                'layoutopts': layoutoptions})
 
     capsule_loss = CapsuleLoss(loss_func=args.loss)
 
@@ -269,7 +292,7 @@ if __name__ == "__main__":
     def reset_meters():
         meter_accuracy.reset()
         meter_loss.reset()
-        confusion_meter.reset()
+        #confusion_meter.reset()
 
 
     def on_sample(state):
@@ -278,7 +301,7 @@ if __name__ == "__main__":
 
     def on_forward(state):
         meter_accuracy.add(state['output'].data, torch.LongTensor(state['sample'][1]))
-        confusion_meter.add(state['output'].data, torch.LongTensor(state['sample'][1]))
+        #confusion_meter.add(state['output'].data, torch.LongTensor(state['sample'][1]))
         meter_loss.add(state['loss'].item())
 
 
@@ -299,7 +322,7 @@ if __name__ == "__main__":
         engine.test(processor, get_iterator(False))
         test_loss_logger.log(state['epoch'], meter_loss.value()[0])
         test_accuracy_logger.log(state['epoch'], meter_accuracy.value()[0])
-        confusion_logger.log(confusion_meter.value())
+        #confusion_logger.log(confusion_meter.value())
 
         print('[Epoch %d] Testing Loss: %.4f (Accuracy: %.2f%%)' % (
             state['epoch'], meter_loss.value()[0], meter_accuracy.value()[0]))
@@ -319,15 +342,12 @@ if __name__ == "__main__":
         reconstruction_logger.log(
             make_grid(reconstruction, nrow=int(BATCH_SIZE ** 0.5), normalize=True, range=(0, 1)).numpy())
 
-        print("GT: ", ground_truth)
-        print("RC: ",reconstruction)
-        print(abs(reconstruction - ground_truth))
-        print("error_pic", make_grid(abs(reconstruction - ground_truth), nrow=int(BATCH_SIZE ** 0.5), normalize=True, range=(0, 1)).numpy()))
+        reconstruction_error_logger.log(make_grid(abs(reconstruction - ground_truth), nrow=int(BATCH_SIZE ** 0.5), normalize=True, range=(0, 1)).numpy())
 
         #assert torch.numel(images) == torch.numel(reconstructions)
         #images = images.view(reconstructions.size()[0], -1)
 
-        reconstruction_loss_logger(state['epoch'], nn.MSELoss(size_average=False)(reconstruction, ground_truth)) # log reconstruction loss on unseen photos
+        reconstruction_loss_logger.log(state['epoch'], 0.0005*nn.MSELoss(size_average=False)(reconstruction, ground_truth)) # log reconstruction loss on unseen photos
 
     # def on_start(state):
     #     state['epoch'] = 327
