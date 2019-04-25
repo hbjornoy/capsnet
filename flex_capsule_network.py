@@ -18,7 +18,7 @@ import numpy as np
 
 BATCH_SIZE = 100
 NUM_CLASSES = 10
-NUM_EPOCHS = 500
+NUM_EPOCHS = 100
 NUM_ROUTING_ITERATIONS = 3
 
 # Training settings
@@ -179,19 +179,14 @@ class CapsuleLoss(nn.Module):
 
     def crossentropy(self, images, labels, classes, reconstruction_loss):
         # Coeff scales the loss to the approx. the same magnitude as orig. -> reconstruction effect is approx. the same
-        s_coeff = 23 
+        s_coeff = 20.85
         _, labels = labels.max(dim=1)
         return (s_coeff*nn.functional.cross_entropy(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
 
     def mse(self, images, labels, classes, reconstruction_loss):
-        s_coeff = 23
+        s_coeff = 551.9
         return (s_coeff*nn.functional.mse_loss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
 
-
-    def spread_loss(self, images, labels, classes, reconstruction_loss):
-
-
-        return 0
 
 
 
@@ -248,8 +243,8 @@ if __name__ == "__main__":
                                                                                 'layoutopts': layoutoptions})
     # confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': list(range(NUM_CLASSES)), 'rownames': list(range(NUM_CLASSES))})
     ground_truth_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Ground Truth'})
-    reconstruction_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction'})
-    reconstruction_error_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction Error'})
+    reconstruction_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction ' + visdom_env})
+    reconstruction_error_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction Error ' + visdom_env})
     reconstruction_loss_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Reconstruction Loss', 
                                                                                 'xlabel': 'Epochs', 
                                                                                 'ylabel': 'Reconstruction Loss', 
