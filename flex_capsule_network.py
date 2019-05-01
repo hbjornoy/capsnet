@@ -184,7 +184,7 @@ class CapsuleLoss(nn.Module):
         return (s_coeff*nn.functional.cross_entropy(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
 
     def mse(self, images, labels, classes, reconstruction_loss):
-        s_coeff = 551.9
+        s_coeff = 679.8
         return (s_coeff*nn.functional.mse_loss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
 
 
