@@ -123,7 +123,7 @@ class CapsuleNet(nn.Module):
             nn.Linear(512, 1024),
             nn.ReLU(inplace=True),
             nn.Linear(1024, 784),
-            #nn.Sigmoid()   # should is this dependant on Loss function or only MSE-loss?
+            nn.Sigmoid()   # hmmm
         )
 
     def forward(self, x, y=None):
