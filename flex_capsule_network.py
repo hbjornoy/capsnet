@@ -72,11 +72,11 @@ class CapsuleLayer(nn.Module):
         if code_word == 'squash':
             return self.squash
         elif code_word == 'sig':
-            return nn.Sigmoid
+            return nn.Sigmoid()
         elif code_word == 'relu':
-            return nn.ReLU
+            return nn.ReLU()
         elif code_word == 'lrelu':
-            return nn.LeakyReLU
+            return nn.LeakyReLU()
         else:
             raise Exception(' Activation function not valid. The code_word used was : {}'.format(code_word))
 
@@ -94,7 +94,10 @@ class CapsuleLayer(nn.Module):
             logits = Variable(torch.zeros(*priors.size())).cuda()
             for i in range(self.num_iterations):
                 probs = softmax(logits, dim=2)
-                outputs = self.squash((probs * priors).sum(dim=2, keepdim=True))
+                if self.activation == self.squash:
+                    outputs = self.activation((probs * priors).sum(dim=2, keepdim=True))
+                else:
+                    outputs = 2*(self.activation((probs * priors).sum(dim=2, keepdim=True)) - 0.5)
 
                 if i != self.num_iterations - 1:
                     delta_logits = (priors * outputs).sum(dim=-1, keepdim=True)
@@ -102,7 +105,10 @@ class CapsuleLayer(nn.Module):
         else:
             outputs = [capsule(x).view(x.size(0), -1, 1) for capsule in self.capsules]
             outputs = torch.cat(outputs, dim=-1)
-            outputs = self.squash(outputs)
+            if self.activation == self.squash:
+                outputs = self.activation(outputs)
+            else:
+                outputs = 2*(self.activation(outputs) - 0.5)
 
         return outputs
 
