@@ -54,14 +54,12 @@ class CapsuleLayer(nn.Module):
                  num_iterations=NUM_ROUTING_ITERATIONS):
         super(CapsuleLayer, self).__init__()
 
+        self.in_channels = in_channels
+        self.out_channels = out_channels
         self.num_route_nodes = num_route_nodes
         self.num_iterations = num_iterations
 
         self.num_capsules = num_capsules
-
-        # LOG-EDIT
-        self.capsules_activation = nn.ModuleList([nn.Conv2d(in_channels=in_channels,out_channels=out_channels,
-                                                 kernel_size=1,stride=1) for i in range(self.num_capsules)])
 
         self.activation = self.define_activation_function(act_func)
 
@@ -71,6 +69,9 @@ class CapsuleLayer(nn.Module):
             self.capsules = nn.ModuleList(
                 [nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=0) for _ in
                  range(num_capsules)])
+            self.capsules_activation = nn.ModuleList(
+                    [nn.Conv2d(in_channels=in_channels,out_channels=out_channels, kernel_size=kernel_size, 
+                    stride=stride) for i in range(self.num_capsules)])
 
     def define_activation_function(self, code_word):
         if code_word == 'squash':
@@ -93,6 +94,21 @@ class CapsuleLayer(nn.Module):
 
     def forward(self, x):
         if self.num_route_nodes != -1:
+            activations= x[1] 
+            x = x[0]
+            #b = x.size(0) #batchsize
+            """
+            print("b: ", b)
+            width_in = x.size(2)  #12
+            print("width_in: ", width_in)
+            pose = x[:,:-self.in_channels,:,:].contiguous() #b,16*32,12,12
+            print("pose: ", pose.shape)
+            print("shapez: ", [b,32,self.in_channels,width_in,width_in])
+            pose = pose.view(b,32,self.in_channels,width_in,width_in).permute(0,2,3,4,1).contiguous() #b,B,12,12,16
+            print("pose: ", pose.shape)
+            #activation = x[:,-self.in_channels:,:,:] #b,B,12,12
+            w = width_out = int((width_in-self.K)/self.stride+1) if self.K else 1 #5
+            """
             priors = x[None, :, :, None, :] @ self.route_weights[:, None, :, :, :]
 
             logits = Variable(torch.zeros(*priors.size())).cuda()
@@ -107,18 +123,32 @@ class CapsuleLayer(nn.Module):
                     delta_logits = (priors * outputs).sum(dim=-1, keepdim=True)
                     logits = logits + delta_logits
         else:
+            alt_outputs = [capsule(x) for capsule in self.capsules]
+            print("alt_outputs: ", len(alt_outputs), alt_outputs[0].shape)
+            alt_outputs = torch.cat(alt_outputs, dim=1) #b,16*32,12,12
+            print("alt_outputs: ", alt_outputs.shape)
+            #[self.capsules_pose[i](x) for i in range(self.B)]#(b,16,12,12) *32
             outputs = [capsule(x).view(x.size(0), -1, 1) for capsule in self.capsules]
-            print(outputs.shape)
+            #print("outputs: ", outputs[0].shape)
             outputs = torch.cat(outputs, dim=-1)
+            #print("outputs: ", outputs.shape)
             if self.activation == self.squash:
                 outputs = self.activation(outputs)
             else:
                 #outputs = 2*(self.activation(outputs) - 0.5) # OLD
                 activations = [self.capsules_activation[i](x) for i in range(self.num_capsules)] #(b,1,12,12)*32
-                activations = F.sigmoid(torch.cat(activations, dim=1)) #b,32,12,12
-                outputs = torch.cat([outputs, activations], dim=1)
+                print("activations: ", len(activations))
+                print("activations: ", activations[0].shape)
+                activations = torch.sigmoid(torch.cat(activations, dim=1)) #b,32,12,12
+                print("activations: ", activations.shape)
+                #outputs = torch.cat([alt_outputs, activations], dim=1)
 
-        return outputs
+        return outputs, activations
+    
+    def sigmoid_scale(self, tensor, dim=-1): # stupid backupplan, gain no new insight whatsoever
+        norm = torch.sqrt((tensor ** 2).sum(dim=dim, keepdim=True))
+        scale = torch.sigmoid(norm)
+        return scale * tensor / norm
 
 
 class CapsuleNet(nn.Module):
