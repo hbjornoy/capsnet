@@ -59,7 +59,7 @@ class CapsuleLayer(nn.Module):
 
         self.num_capsules = num_capsules
 
-        self.activation = self.define_activation_function(act_func)
+        self.squash = self.define_activation_function(act_func)
 
         if num_route_nodes != -1:
             self.route_weights = nn.Parameter(torch.randn(num_capsules, num_route_nodes, in_channels, out_channels))
@@ -75,7 +75,7 @@ class CapsuleLayer(nn.Module):
             logits = Variable(torch.zeros(*priors.size())).cuda()
             for i in range(self.num_iterations):
                 probs = softmax(logits, dim=2)
-                outputs = self.activation((probs * priors).sum(dim=2, keepdim=True))
+                outputs = self.squash((probs * priors).sum(dim=2, keepdim=True))
 
                 if i != self.num_iterations - 1:
                     delta_logits = (priors * outputs).sum(dim=-1, keepdim=True)
@@ -83,15 +83,15 @@ class CapsuleLayer(nn.Module):
         else:
             outputs = [capsule(x).view(x.size(0), -1, 1) for capsule in self.capsules]
             outputs = torch.cat(outputs, dim=-1)
-            outputs = self.activation(outputs)
+            outputs = self.squash(outputs)
 
         return outputs
 
-    def define_activation_function(self, code_word):
+    def define_activation_function(self, code_word, **kwargs):
         if code_word == 'squash':
-            return self.squash
+            return Squash(code_word, **kwargs)
         elif code_word == 'sig':
-            return self.sigmoid
+            return Squash(code_word, **kwargs) #NOT CORRECT
         elif code_word == 'tanh':
             return self.tanh
         elif code_word == 'relu':
@@ -99,23 +99,64 @@ class CapsuleLayer(nn.Module):
         else:
             raise Exception(' Activation function not valid. The code_word used was : {}'.format(code_word))
 
-    def squash(self, tensor, incline=10, flatting=0.001, dim=-1):
-        squared_norm = (tensor ** 2).sum(dim=dim, keepdim=True)
-        scale = squared_norm / (1 + squared_norm)
-        return scale * tensor / torch.sqrt(squared_norm)
-
-    def sigmoid(self, tensor, s1=3, s2=3, s3=3, incline=None, flatting=None, dim=-1):
+    def squash(self, tensor, a1=2, a2=1, dim=-1):
         l2 = torch.sqrt((tensor ** 2).sum(dim=dim, keepdim=True))
-        scale = 1 / (1 + s1*torch.exp(s2-s3*l2)) * self.squash_function(l2)
+        scale = self.squash_function(l2, a1, a2)
         return scale * tensor / l2
 
-    def tanh(self, tensor, t1=3, t2=2, incline=None, flatting=None, dim=-1):
+    def sigmoid(self, tensor, s1=3, s2=3, s3=3, a1=2, a2=1, dim=-1):
         l2 = torch.sqrt((tensor ** 2).sum(dim=dim, keepdim=True))
-        scale = (0.5 + 0.5*torch.tanh(t1*l2 - t2)) * self.squash_function(l2)
+        scale = 1 / (1 + s1*torch.exp(s2-s3*l2)) * self.squash_function(l2, a1, a2)
         return scale * tensor / l2
 
-    def squash_function(self, l2, incline_exponent=1, flattening_coeff=0.2):
-        return abs(l2)**incline_exponent / (abs(l2)**incline_exponent+flattening_coeff)
+    def tanh(self, tensor, t1=3, t2=2, a1=2, a2=1, dim=-1):
+        l2 = torch.sqrt((tensor ** 2).sum(dim=dim, keepdim=True))
+        scale = (0.5 + 0.5*torch.tanh(t1*l2 - t2)) * self.squash_function(l2, a1, a2)
+        return scale * tensor / l2
+
+    def squash_function(self, l2, a1=1, a2=0.2):
+        return abs(l2)**a1 / (abs(l2)**a1 + a1)
+
+@weak_module
+class Squash(Module):
+
+    def __init__(self, code_word=squash, upper=1. / 3, inplace=False):
+        super(Squash, self).__init__()
+
+        if code_word == 'squash':
+            self.scaling_function = Squash_default(l2, **kwargs)
+        elif code_word == 'sig':
+            return Squash(code_word, **kwargs)
+        elif code_word == 'tanh':
+            return self.tanh
+        elif code_word == 'relu':
+            return self.relu
+        else:
+            raise Exception(' Activation function not valid. The code_word used was : {}'.format(code_word))
+
+
+    @weak_script_method
+    def forward(self, tensor):
+        l2 = torch.sqrt((tensor ** 2).sum(dim=dim, keepdim=True))
+        scale = self.scaling_function(l2)
+        return scale * tensor / l2
+
+@weak_module
+class Squash_default(Module):
+    """
+    increase a1 to get a steeper curve inplace
+    Increase a2 to get a flattening elongated effect on the curve of the activationfunction, widening the area of effect 
+    """
+
+    def __init__(self, a1=2, a2=a1):
+        super(Squash_default, self).__init__()
+        self.a1 = a1
+        self.a2 = a2
+
+    @weak_script_method
+    def forward(self, l2):
+        return abs(l2)**self.a1 / (abs(l2)**self.a1 + self.a2)
+
 
 
 class CapsuleNet(nn.Module):
