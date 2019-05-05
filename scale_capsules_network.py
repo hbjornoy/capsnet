@@ -23,10 +23,24 @@ NUM_ROUTING_ITERATIONS = 3
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Dynamic-Routing-between-capsules implementation')
-parser.add_argument('--act', type=str, default='squash', metavar='A',
+parser.add_argument('-act', type=str, default='squash', metavar='A',
                     help='activation-function (default: squash, others: sig, relu, lrelu))')
-parser.add_argument('--loss', type=str, default='margin', metavar='L',
+parser.add_argument('-loss', type=str, default='margin', metavar='L',
                     help='loss function (default: margin, others: ce, mse)')
+parser.add_argument('-name', type=str, metavar='N',
+                    help='If no name then it gets the name of the parameters')
+parser.add_argument('-a1', type=float, default=2.0, metavar='a1',
+                    help='squash (default: 2)')
+parser.add_argument('-a2', type=float, default=1.0, metavar='a2',
+                    help='squash (default: 1)')
+parser.add_argument('-s1', type=float, metavar='s1',
+                    help='sig: ex:1')
+parser.add_argument('-s2', type=float, metavar='s2',
+                    help='sig: ex:0')
+parser.add_argument('-s3', type=float, metavar='s3',
+                    help='sig: ex:1')
+parser.add_argument('-t1', type=float, metavar='t1',
+                    help='tanh: ex:1')
 
 
 def softmax(input, dim=1):
@@ -50,8 +64,8 @@ def augmentation(x, max_shift=2):
 
 
 class CapsuleLayer(nn.Module):
-    def __init__(self, num_capsules, num_route_nodes, in_channels, out_channels, act_func='squash', kernel_size=None, stride=None,
-                 num_iterations=NUM_ROUTING_ITERATIONS):
+    def __init__(self, num_capsules, num_route_nodes, in_channels, out_channels, kernel_size=None, stride=None,
+                 num_iterations=NUM_ROUTING_ITERATIONS, **kwargs):
         super(CapsuleLayer, self).__init__()
 
         self.num_route_nodes = num_route_nodes
@@ -59,7 +73,7 @@ class CapsuleLayer(nn.Module):
 
         self.num_capsules = num_capsules
 
-        self.squash = self.define_activation_function(act_func)
+        self.squash = Squash(**kwargs)
 
         if num_route_nodes != -1:
             self.route_weights = nn.Parameter(torch.randn(num_capsules, num_route_nodes, in_channels, out_channels))
@@ -117,57 +131,69 @@ class CapsuleLayer(nn.Module):
     def squash_function(self, l2, a1=1, a2=0.2):
         return abs(l2)**a1 / (abs(l2)**a1 + a1)
 
-@weak_module
-class Squash(Module):
+class Squash(torch.nn.Module):
 
-    def __init__(self, code_word=squash, upper=1. / 3, inplace=False):
+    def __init__(self, **kwargs):
         super(Squash, self).__init__()
+        if 'act' in kwargs:
+            act = kwargs.pop('act', False)
+        else:
+            raise Exception('To run function we need to define act (is parameter in --act)')
 
-        if code_word == 'squash':
-            self.scaling_function = Squash_default(l2, **kwargs)
-        elif code_word == 'sig':
-            return Squash(code_word, **kwargs)
-        elif code_word == 'tanh':
+        if act == 'squash':
+            self.scaling_function = Squash_default(**kwargs)
+        elif act == 'sig':
+            self.scaling_function = Sigmoid_scaling(**kwargs)
+        elif act == 'tanh':
             return self.tanh
-        elif code_word == 'relu':
-            return self.relu
         else:
             raise Exception(' Activation function not valid. The code_word used was : {}'.format(code_word))
 
 
-    @weak_script_method
     def forward(self, tensor):
         l2 = torch.sqrt((tensor ** 2).sum(dim=dim, keepdim=True))
         scale = self.scaling_function(l2)
         return scale * tensor / l2
 
-@weak_module
-class Squash_default(Module):
+class Squash_default(torch.nn.Module):
     """
     increase a1 to get a steeper curve inplace
     Increase a2 to get a flattening elongated effect on the curve of the activationfunction, widening the area of effect 
     """
 
-    def __init__(self, a1=2, a2=a1):
+    def __init__(self, **kwargs):
         super(Squash_default, self).__init__()
-        self.a1 = a1
-        self.a2 = a2
+        self.a1 = kwargs.pop('a1', False)
+        self.a2 = kwargs.pop('a2', False)
 
-    @weak_script_method
     def forward(self, l2):
         return abs(l2)**self.a1 / (abs(l2)**self.a1 + self.a2)
+
+class Sigmoid_scaling(torch.nn.Module):
+    """
+    Increase s1 to ...
+    Increase s2 to
+    Increase s3 to
+    """
+
+    def __init__(self, **kwargs):
+        super(Sigmoid_scaling, self).__init__()
+        self.__dict__.update(kwargs)
+
+    def forward(self, l2):
+        return  (1 / (1 + self.s1*torch.exp(self.s2-self.s3*l2))) * (abs(l2)**self.a1 / (abs(l2)**self.a1 + self.a2))
 
 
 
 class CapsuleNet(nn.Module):
-    def __init__(self, act_func='squash'):
+    def __init__(self, **kwargs):
         super(CapsuleNet, self).__init__()
 
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=1)
-        self.primary_capsules = CapsuleLayer(num_capsules=8, num_route_nodes=-1, in_channels=256, out_channels=32, act_func=act_func,
-                                             kernel_size=9, stride=2)
-        self.digit_capsules = CapsuleLayer(num_capsules=NUM_CLASSES, num_route_nodes= 32 * 6 * 6, in_channels=8, act_func=act_func,
-                                           out_channels=16)
+        self.primary_capsules = CapsuleLayer(num_capsules=8, num_route_nodes=-1, in_channels=256, out_channels=32,
+                                             kernel_size=9, stride=2, **kwargs)
+        self.digit_capsules = CapsuleLayer(num_capsules=NUM_CLASSES, num_route_nodes= 32 * 6 * 6, in_channels=8,
+                                           out_channels=16, **kwargs)
 
         self.decoder = nn.Sequential(
             nn.Linear(16 * NUM_CLASSES, 512),
@@ -240,6 +266,20 @@ class CapsuleLoss(nn.Module):
         return (s_coeff*nn.functional.mse_loss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
 
 
+def is_valid_args(**kwargs):
+    try:
+        if kwargs['act'] == 'squash': 
+                needed_params = ('a1', 'a2')
+                for key in needed_params:
+                    temp = kwargs[key]
+        elif kwargs['act'] == 'sig':
+                needed_params = ('a1', 'a2', 's1', 's2', 's3')
+                for key in needed_params:
+                    temp = kwargs[key]
+        else:
+            raise Exception(' Activation function not valid. The code_word used was : {}'.format(kwargs['act']))
+    except:
+        raise Exception('Arguments for {}-function not valid. Need numeric variables for {l}'.format(kwargs['act'], l=needed_params))
 
 
 if __name__ == "__main__":
@@ -255,11 +295,16 @@ if __name__ == "__main__":
     from tqdm import tqdm
 
     global args
-    args = parser.parse_args()
+    args = vars(parser.parse_args())
     print(args)
-    visdom_env = str(args.act + "-" + args.loss)
-
-    model = CapsuleNet(act_func=args.act)
+    args = {k: v for k, v in args.items() if v is not None} # removes unused arguments
+    is_valid_args(**args)
+    if 'name' in args:
+        visdom_env = '-'.join([args['act'][:3], args['loss'][:3], args.pop('name', False)])
+    else:
+        visdom_env = '-'.join(['%s' % value[:3] if type(value) is str else '%s:%s' % (key, value) for (key, value) in args.items()])
+    arg_loss = args.pop('loss', False)
+    model = CapsuleNet(**args)
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
     model.cuda()
 
@@ -271,7 +316,7 @@ if __name__ == "__main__":
     meter_loss = tnt.meter.AverageValueMeter()
     meter_accuracy = tnt.meter.ClassErrorMeter(accuracy=True)
     #confusion_meter = tnt.meter.ConfusionMeter(NUM_CLASSES, normalized=True)
-    layoutoptions = {'plotly': {'legend': dict(x=0.8, y=0.5, traceorder='normal', font=dict(family='sans-serif',size=12,color='#000'), bgcolor='#E2E2E2', bordercolor='#FFFFFF',borderwidth=2)}}
+    layoutoptions = {'plotly': {'legend': dict(x=0.8, y=0.5, traceorder='normal', font=dict(family='sans-serif',size=9,color='#000'), bgcolor='rgba(0,0,0,0)', bordercolor='rgba(0,0,0,0)', borderwidth=2)}}
 
     train_loss_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Train Loss', 
                                                                                 'xlabel': 'Epochs', 
@@ -303,7 +348,7 @@ if __name__ == "__main__":
                                                                                 'legend': [visdom_env],
                                                                                 'layoutopts': layoutoptions})
 
-    capsule_loss = CapsuleLoss(loss_func=args.loss)
+    capsule_loss = CapsuleLoss(loss_func=arg_loss)
 
 
     def get_iterator(mode):
