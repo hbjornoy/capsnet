@@ -75,10 +75,7 @@ class CapsuleLayer(nn.Module):
             logits = Variable(torch.zeros(*priors.size())).cuda()
             for i in range(self.num_iterations):
                 probs = softmax(logits, dim=2)
-                if self.activation == self.squash:
-                    outputs = self.activation((probs * priors).sum(dim=2, keepdim=True))
-                else:
-                    outputs = 2*(self.activation((probs * priors).sum(dim=2, keepdim=True)) - 0.5)
+                outputs = self.activation((probs * priors).sum(dim=2, keepdim=True))
 
                 if i != self.num_iterations - 1:
                     delta_logits = (priors * outputs).sum(dim=-1, keepdim=True)
@@ -86,10 +83,7 @@ class CapsuleLayer(nn.Module):
         else:
             outputs = [capsule(x).view(x.size(0), -1, 1) for capsule in self.capsules]
             outputs = torch.cat(outputs, dim=-1)
-            if self.activation == self.squash:
-                outputs = self.activation(outputs)
-            else:
-                outputs = 2*(self.activation(outputs) - 0.5)
+            outputs = self.activation(outputs)
 
         return outputs
 
@@ -97,37 +91,31 @@ class CapsuleLayer(nn.Module):
         if code_word == 'squash':
             return self.squash
         elif code_word == 'sig':
-            return nn.Sigmoid()
+            return self.sigmoid
+        elif code_word == 'tanh':
+            return self.tanh
         elif code_word == 'relu':
-            return nn.ReLU()
-        elif code_word == 'lrelu':
-            return nn.LeakyReLU()
+            return self.relu
         else:
             raise Exception(' Activation function not valid. The code_word used was : {}'.format(code_word))
 
-    def squash(self, tensor, dim=-1):
+    def squash(self, tensor, incline=10, flatting=0.001, dim=-1):
         squared_norm = (tensor ** 2).sum(dim=dim, keepdim=True)
         scale = squared_norm / (1 + squared_norm)
         return scale * tensor / torch.sqrt(squared_norm)
 
-    def sigmoid(self, tensor, c1=3, c2=3, c3=3, incline=None, flatting=None, dim=-1,):
+    def sigmoid(self, tensor, s1=3, s2=3, s3=3, incline=None, flatting=None, dim=-1):
         l2 = torch.sqrt((tensor ** 2).sum(dim=dim, keepdim=True))
-        scale = 1 / (1 + c1*torch.exp(c2-c3*l2)) * self.squash_function(l2)
+        scale = 1 / (1 + s1*torch.exp(s2-s3*l2)) * self.squash_function(l2)
         return scale * tensor / l2
 
-    def tanh(self, tensor, dim=-1):
-        squared_norm = (tensor ** 2).sum(dim=dim, keepdim=True)
-        scale = squared_norm / (1 + squared_norm)
-        return scale * tensor / torch.sqrt(squared_norm)
-
-    def relu(self, tensor, dim=-1):
-        squared_norm = (tensor ** 2).sum(dim=dim, keepdim=True)
-        scale = squared_norm / (1 + squared_norm)
-        return scale * tensor / torch.sqrt(squared_norm)
+    def tanh(self, tensor, t1=3, t2=2, incline=None, flatting=None, dim=-1):
+        l2 = torch.sqrt((tensor ** 2).sum(dim=dim, keepdim=True))
+        scale = (0.5 + 0.5*torch.tanh(t1*l2 - t2)) * self.squash_function(l2)
+        return scale * tensor / l2
 
     def squash_function(self, l2, incline_exponent=1, flattening_coeff=0.2):
-        return abs(l2)**incline_exponent/
-                (abs(l2)**incline_exponent+flattening_coeff)
+        return abs(l2)**incline_exponent / (abs(l2)**incline_exponent+flattening_coeff)
 
 
 class CapsuleNet(nn.Module):
