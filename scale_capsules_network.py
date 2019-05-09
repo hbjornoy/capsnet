@@ -33,11 +33,11 @@ parser.add_argument('-a1', type=float, default=2.0, metavar='a1',
                     help='squash (default: 2)')
 parser.add_argument('-a2', type=float, default=1.0, metavar='a2',
                     help='squash (default: 1)')
-parser.add_argument('-s1', type=float, metavar='s1',
+parser.add_argument('-k1', type=float, metavar='k1',
                     help='sig: ex:1')
-parser.add_argument('-s2', type=float, metavar='s2',
+parser.add_argument('-k2', type=float, metavar='k2',
                     help='sig: ex:0')
-parser.add_argument('-s3', type=float, metavar='s3',
+parser.add_argument('-k3', type=float, metavar='k3',
                     help='sig: ex:1')
 parser.add_argument('-t1', type=float, metavar='t1',
                     help='tanh: ex:1')
@@ -181,7 +181,7 @@ class Sigmoid_scaling(torch.nn.Module):
         self.__dict__.update(kwargs)
 
     def forward(self, l2):
-        return  (1 / (1 + self.s1*torch.exp(self.s2-self.s3*l2))) * (abs(l2)**self.a1 / (abs(l2)**self.a1 + self.a2))
+        return  (1 / (1 + self.k1*torch.exp(self.k2-self.k3*l2))) #* (abs(l2)**self.a1 / (abs(l2)**self.a1 + self.a2))
 
 
 
@@ -302,7 +302,7 @@ if __name__ == "__main__":
     if 'name' in args:
         visdom_env = '-'.join([args['act'][:3], args['loss'][:3], args.pop('name', False)])
     else:
-        visdom_env = '-'.join(['%s' % value[:3] if type(value) is str else '%s:%s' % (key, value) for (key, value) in args.items()])
+        visdom_env = '-'.join(['%s' % value[:3] if type(value) is str else '%s:%s' % (key, int(value)) for (key, value) in args.items()])
     arg_loss = args.pop('loss', False)
     model = CapsuleNet(**args)
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
