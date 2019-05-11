@@ -29,9 +29,9 @@ parser.add_argument('-loss', type=str, default='margin', metavar='L',
                     help='loss function (default: margin, others: ce, mse)')
 parser.add_argument('-name', type=str, metavar='N',
                     help='If no name then it gets the name of the parameters')
-parser.add_argument('-a1', type=float, default=2.0, metavar='a1',
+parser.add_argument('-a1', type=float, metavar='a1',
                     help='squash (default: 2)')
-parser.add_argument('-a2', type=float, default=1.0, metavar='a2',
+parser.add_argument('-a2', type=float, metavar='a2',
                     help='squash (default: 1)')
 parser.add_argument('-k1', type=float, metavar='k1',
                     help='sig: ex:1')
@@ -273,7 +273,7 @@ def is_valid_args(**kwargs):
                 for key in needed_params:
                     temp = kwargs[key]
         elif kwargs['act'] == 'sig':
-                needed_params = ('a1', 'a2', 's1', 's2', 's3')
+                needed_params = ('k1', 'k2', 'k3')
                 for key in needed_params:
                     temp = kwargs[key]
         else:
