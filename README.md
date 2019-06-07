@@ -70,21 +70,3 @@ Highest accuracy was 99.7% on the 443rd epoch. The model may achieve a higher ac
 
 Default PyTorch Adam optimizer hyperparameters were used with no learning rate scheduling. 
 Epochs with batch size of 100 takes ~3 minutes on a Razer Blade w/ GTX 1050 and ~2 minutes on a NVIDIA Titan XP
-
-## TODO
-
-* Extension to other datasets apart from MNIST.
-
-## Credits
-
-Primarily referenced these two TensorFlow and Keras implementations:
-1. [Keras implementation by @XifengGuo](https://github.com/XifengGuo/CapsNet-Keras)
-2. [TensorFlow implementation by @naturomics](https://github.com/naturomics/CapsNet-Tensorflow)
-
-Many thanks to [@InnerPeace-Wu](https://github.com/InnerPeace-Wu) for a [discussion on the dynamic routing procedure](https://github.com/XifengGuo/CapsNet-Keras/issues/1) outlined in the paper.
-
-## Contact/Support
-
-Gram.AI is currently heavily developing a wide number of AI models to be either open-sourced or released for free to the community, hence why we cannot guarantee complete support for this work.
-
-If any issues come up with the usage of this implementation however, or if you would like to contribute in any way, please feel free to send an e-mail to [kenta@perlin.net](kenta@perlin.net) or open a new GitHub issue on this repository.
