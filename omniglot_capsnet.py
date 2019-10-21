@@ -14,7 +14,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 import numpy as np
-
+from torchvision import transforms
 
 BATCH_SIZE = 100
 NUM_CLASSES = 10
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     from torchnet.logger import VisdomPlotLogger, VisdomLogger
     
     from torchvision.utils import make_grid
-    from torchvision.datasets.mnist import MNIST
+    from torchvision.datasets import MNIST, ImageFolder
     from tqdm import tqdm
 
     global args
@@ -306,7 +306,8 @@ if __name__ == "__main__":
     arg_loss = args.pop('loss', False)
     model = CapsuleNet(**args)
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
-    model.cuda()
+    if torch.cuda.is_available():
+        model.cuda()
 
     print("# parameters:", sum(param.numel() for param in model.parameters()))
 
@@ -351,10 +352,68 @@ if __name__ == "__main__":
     capsule_loss = CapsuleLoss(loss_func=arg_loss)
 
 
-    def get_iterator(mode):
+    class Omniglot_dataset(ImageFolder):
+
+        def __init__(self, root_dir, transform=None):
+            """
+            Args:
+                csv_file (string): Path to the csv file with annotations.
+                root_dir (string): Directory with all the images.
+                transform (callable, optional): Optional transform to be applied
+                    on a sample.
+            """
+            self.root_dir = root_dir
+            self.transform = transform
+
+        """
+        def __len__(self):
+            return len(self.landmarks_frame)
+
+        def __getitem__(self, idx):
+            if torch.is_tensor(idx):
+                idx = idx.tolist()
+
+            img_name = os.path.join(self.root_dir,
+                                    self.landmarks_frame.iloc[idx, 0])
+            image = io.imread(img_name)
+            landmarks = self.landmarks_frame.iloc[idx, 1:]
+            landmarks = np.array([landmarks])
+            landmarks = landmarks.astype('float').reshape(-1, 2)
+            sample = {'image': image, 'landmarks': landmarks}
+
+            if self.transform:
+                sample = self.transform(sample)
+
+            return sample"""
+
+
+    def get_iterator_omniglot(mode):
+        if mode:
+            dataset = ImageFolder(root='./language_dataset/images_background', transform=None)
+        else:
+            dataset = ImageFolder(root='./language_dataset/images_evaluation', transform=None)
+        print(dataset)
+        data = getattr(dataset, 'samples')
+        print("data: ", type(data))
+        print("len: ", len(data))
+        print(data[0])
+        pil = dataset.loader(data[0][0])
+        print(pil)
+        print(transforms.functional.to_tensor(pil))
+        labels = getattr(dataset, 'targets')
+        print("labels: ", type(labels))
+        tensor_dataset = tnt.dataset.TensorDataset([data, labels])
+
+        return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
+
+
+    def get_iterator_mnist(mode):
         dataset = MNIST(root='./data', download=True, train=mode)
+        print(dataset)
         data = getattr(dataset, 'train_data' if mode else 'test_data')
+        print("data: ", data[0])
         labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
+        print("labels: ", type(labels))
         tensor_dataset = tnt.dataset.TensorDataset([data, labels])
 
         return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
@@ -411,7 +470,7 @@ if __name__ == "__main__":
 
         reset_meters()
 
-        engine.test(processor, get_iterator(False))
+        engine.test(processor, get_iterator_omniglot(False))
         test_loss_logger.log(state['epoch'], meter_loss.value()[0])
         test_accuracy_logger.log(state['epoch'], meter_accuracy.value()[0])
         #confusion_logger.log(confusion_meter.value())
@@ -423,7 +482,7 @@ if __name__ == "__main__":
 
         # Reconstruction visualization.
 
-        test_sample = next(iter(get_iterator(False)))
+        test_sample = next(iter(get_iterator_omniglot(False)))
 
         ground_truth = (test_sample[0].unsqueeze(1).float() / 255.0)
         _, reconstructions = model(Variable(ground_truth).cuda())
@@ -450,4 +509,4 @@ if __name__ == "__main__":
     engine.hooks['on_start_epoch'] = on_start_epoch
     engine.hooks['on_end_epoch'] = on_end_epoch
 
-    engine.train(processor, get_iterator(True), maxepoch=NUM_EPOCHS, optimizer=optimizer)
+    engine.train(processor, get_iterator_mnist(True), maxepoch=NUM_EPOCHS, optimizer=optimizer)
