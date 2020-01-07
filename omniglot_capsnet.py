@@ -509,4 +509,4 @@ if __name__ == "__main__":
     engine.hooks['on_start_epoch'] = on_start_epoch
     engine.hooks['on_end_epoch'] = on_end_epoch
 
-    engine.train(processor, get_iterator_mnist(True), maxepoch=NUM_EPOCHS, optimizer=optimizer)
+    engine.train(processor, get_iterator_omniglot(True), maxepoch=NUM_EPOCHS, optimizer=optimizer)
