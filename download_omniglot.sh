@@ -1,8 +1,8 @@
 if [ ! -f "images_background.zip" ]; then
-    wget http://github.com/brendenlake/omniglot/raw/master/python/images_background.zip
+    curl -O http://github.com/brendenlake/omniglot/raw/master/python/images_background.zip
 fi
 if [ ! -f "images_evaluation.zip" ]; then
-    wget http://github.com/brendenlake/omniglot/raw/master/python/images_evaluation.zip
+    curl -O http://github.com/brendenlake/omniglot/raw/master/python/images_evaluation.zip
 fi
 
 mkdir -p language_dataset
