@@ -5,13 +5,13 @@ if [ ! -f "images_evaluation.zip" ]; then
     curl -O https://raw.githubusercontent.com/brendenlake/omniglot/master/python/images_evaluation.zip
 fi
 
-mkdir -p language_dataset
+mkdir -p omniglot_raw_data
 
-if [ ! -d "language_dataset/images_background" ]; then
-    unzip images_background.zip -d language_dataset
+if [ ! -d "omniglot_raw_data/images_background" ]; then
+    unzip images_background.zip -d omniglot_raw_data
 fi
-if [ ! -d "language_dataset/images_evaluation" ]; then
-    unzip images_evaluation.zip -d language_dataset
+if [ ! -d "omniglot_raw_data/images_evaluation" ]; then
+    unzip images_evaluation.zip -d omniglot_raw_data
 fi
 
 rm -rf images_background.zip

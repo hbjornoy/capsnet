@@ -1,6 +1,6 @@
 .idea/
 data/
-language_dataset/
+omniglot_raw_data/
 logs/
 epochs/*
 !epochs/.gitkeep

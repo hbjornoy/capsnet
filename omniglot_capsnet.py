@@ -15,11 +15,11 @@ import torch.nn.functional as F
 from torch import nn
 import numpy as np
 from torchvision import transforms
+import matplotlib.pyplot as plt
+import subprocess
 
-BATCH_SIZE = 100
-NUM_CLASSES = 10
-NUM_EPOCHS = 100
-NUM_ROUTING_ITERATIONS = 3
+import logging
+logging.captureWarnings(True)
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Dynamic-Routing-between-capsules implementation')
@@ -41,6 +41,14 @@ parser.add_argument('-k3', type=float, metavar='k3',
                     help='sig: ex:1')
 parser.add_argument('-t1', type=float, metavar='t1',
                     help='tanh: ex:1')
+parser.add_argument('-d', type=str, default='Omniglot', metavar='dataset_used',
+                    help='Dataset used. Possible datasets: Omniglot, MNIST')
+global args
+args = vars(parser.parse_args())
+BATCH_SIZE = 100
+NUM_CLASSES = 30 if args.get('d') == 'Omniglot' else 10
+NUM_EPOCHS = 100
+NUM_ROUTING_ITERATIONS = 3
 
 
 def softmax(input, dim=1):
@@ -281,6 +289,8 @@ def is_valid_args(**kwargs):
     except:
         raise Exception('Arguments for {}-function not valid. Need numeric variables for {l}'.format(kwargs['act'], l=needed_params))
 
+#---------------------------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     from torch.autograd import Variable
@@ -293,9 +303,11 @@ if __name__ == "__main__":
     from torchvision.utils import make_grid
     from torchvision.datasets import MNIST, ImageFolder
     from tqdm import tqdm
+    import torchvision
+    from torchvision.datasets.utils import makedir_exist_ok
 
-    global args
-    args = vars(parser.parse_args())
+    #global args
+    #args = vars(parser.parse_args())
     print(args)
     args = {k: v for k, v in args.items() if v is not None} # removes unused arguments
     is_valid_args(**args)
@@ -352,78 +364,253 @@ if __name__ == "__main__":
     capsule_loss = CapsuleLoss(loss_func=arg_loss)
 
 
-    class Omniglot_dataset(ImageFolder):
+# ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
 
-        def __init__(self, root_dir, transform=None):
-            """
-            Args:
-                csv_file (string): Path to the csv file with annotations.
-                root_dir (string): Directory with all the images.
-                transform (callable, optional): Optional transform to be applied
-                    on a sample.
-            """
-            self.root_dir = root_dir
+    class Omniglot_dataset(torchvision.datasets.vision.VisionDataset):
+        training_file = 'omniglot_training.pt'
+        test_file = 'omniglot_test.pt'
+
+        @property
+        def train_labels(self):
+            return self.targets
+
+        @property
+        def test_labels(self):
+            return self.targets
+
+        @property
+        def train_data(self):
+            return self.data
+
+        @property
+        def test_data(self):
+            return self.data
+
+        def __init__(self, root, train=True, transform=None, download=False):
+            self.root = root
             self.transform = transform
+            self.train = train
+            self.raw_training_folder = 'omniglot_raw_data/images_background'
+            self.raw_testing_folder = 'omniglot_raw_data/images_evaluation'
 
-        """
+            if download:
+                if not os.path.exists(os.path.join('omniglot_raw_data')):
+                    subprocess.call("./download_omniglot.sh", shell=True, executable='/bin/bash')
+                self.process()
+
+            if not self._check_exists():
+                raise RuntimeError('Dataset not found.' +
+                                   ' You can use download=True to download it')
+
+            if self.train:
+                data_file = self.training_file
+            else:
+                data_file = self.test_file
+            self.data, self.targets = torch.load(os.path.join(self.processed_folder, data_file))
+
+        def __getitem__(self, index):
+            print("get_item__________________________")
+            return 0
+
         def __len__(self):
-            return len(self.landmarks_frame)
+            return len(self.data)
 
-        def __getitem__(self, idx):
-            if torch.is_tensor(idx):
-                idx = idx.tolist()
+        @property
+        def processed_folder(self):
+            return os.path.join(self.root, self.__class__.__name__, 'processed')
 
-            img_name = os.path.join(self.root_dir,
-                                    self.landmarks_frame.iloc[idx, 0])
-            image = io.imread(img_name)
-            landmarks = self.landmarks_frame.iloc[idx, 1:]
-            landmarks = np.array([landmarks])
-            landmarks = landmarks.astype('float').reshape(-1, 2)
-            sample = {'image': image, 'landmarks': landmarks}
+        def _check_exists(self):
+            return (os.path.exists(os.path.join(self.processed_folder,
+                                                self.training_file)) and
+                    os.path.exists(os.path.join(self.processed_folder,
+                                                self.test_file)))
 
-            if self.transform:
-                sample = self.transform(sample)
+        def process(self):
 
-            return sample"""
+            if self._check_exists():
+                return
+
+            makedir_exist_ok(self.processed_folder)
+
+            # process and save as torch files
+            print('Processing...')
+
+            training_set = ImageFolder(root=self.raw_training_folder, transform=None)
+            testing_set = ImageFolder(root=self.raw_testing_folder, transform=None)
+            for i, dataset in enumerate([training_set, testing_set]):
+                data_orig = getattr(dataset, 'samples')
+                data_list = []
+                print("Unpacking images into tensor")
+                for j, tuple in enumerate(data_orig):
+                    pil = dataset.loader(tuple[0])
+                    gray_pil = transforms.functional.to_grayscale(pil, num_output_channels=1)
+                    tensor_img = transforms.functional.to_tensor(gray_pil)
+                    data_list.append(tensor_img)
+                    if j % 5000 == 0:
+                        print("{} images processed out of {}".format(j, len(data_orig)))
+                print("Finished: {} images processed out of {}".format(j + 1, len(data_orig)))
+                data = torch.cat(data_list, out=torch.Tensor(len(data_orig), 105, 105))
+
+                labels = getattr(dataset, 'targets')
+                labels = torch.LongTensor(labels)
+
+                if i == 0 : # training_set
+                    with open(os.path.join(self.processed_folder, self.training_file), 'wb') as f:
+                        torch.save((data, labels), f)
+                else:
+                    with open(os.path.join(self.processed_folder, self.test_file), 'wb') as f:
+                        torch.save((data, labels), f)
+
+            print('Done!')
+
+        def extra_repr(self):
+            return "Split: {}".format("Train" if self.train is True else "Test")
 
 
-    def get_iterator_omniglot(mode):
+# ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
+
+    def convert_imagepaths_to_tensors(dataset):
+        return 0
+
+
+    def get_iterator_omniglot_old(mode):
         if mode:
             dataset = ImageFolder(root='./language_dataset/images_background', transform=None)
         else:
             dataset = ImageFolder(root='./language_dataset/images_evaluation', transform=None)
-        print(dataset)
-        data = getattr(dataset, 'samples')
-        print("data: ", type(data))
-        print("len: ", len(data))
-        print(data[0])
-        pil = dataset.loader(data[0][0])
-        print(pil)
-        print(transforms.functional.to_tensor(pil))
+        data_orig = getattr(dataset, 'samples')
+
+        data_list = []
+        print("Unpacking images into tensor")
+        for i, tuple in enumerate(data_orig):
+            pil = dataset.loader(tuple[0])
+            gray_pil = transforms.functional.to_grayscale(pil, num_output_channels=1)
+            tensor_img = transforms.functional.to_tensor(gray_pil)
+            data_list.append(tensor_img)
+            if i%5000 == 0:
+                print("{} images processed out of {}".format(i+1, len(data_orig)))
+        print("Finished: {} images processed out of {}".format(i+1, len(data_orig)))
+        data = torch.cat(data_list, out=torch.Tensor(len(data_orig), 105, 105))
+
         labels = getattr(dataset, 'targets')
-        print("labels: ", type(labels))
+        labels = torch.LongTensor(labels)
+
         tensor_dataset = tnt.dataset.TensorDataset([data, labels])
 
-        return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
-
-
-    def get_iterator_mnist(mode):
-        dataset = MNIST(root='./data', download=True, train=mode)
+        print("-----------------------------------------")
         print(dataset)
-        data = getattr(dataset, 'train_data' if mode else 'test_data')
-        print("data: ", data[0])
-        labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
-        print("labels: ", type(labels))
-        tensor_dataset = tnt.dataset.TensorDataset([data, labels])
+        print(data[0][50])
+        print("- - - - - - - - - - - - - - - - - - - - -")
+        print("data.size(): ", data.size())
+        print('type(data): ', type(data))
+        print('type(data[0][0][0]): ', type(data[0][0][0]))
+        print('data[0][0][0]: ', data[0][0][0])
+        print("data.mean(): ", data.mean())
+        print("data.min(): ", data.min())
+        print("data.max(): ", data.max())
+        print("- - - - - - - - - - - - - - - - - - - - -")
+        print("labels.size(): ", labels.size())
+        print("type(labels): ", type(labels))
+        print("type(labels[0]): ", type(labels[0]))
+        print("labels[0]: ", labels[0])
+        print("labels.min(): ", labels.min())
+        print("labels.max(): ", labels.max())
+        print("-----------------------------------------")
 
         return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
 
 
-    def processor(sample):
+    def get_iterator(mode, dataset_used='Omniglot'):
+        if dataset_used == 'Omniglot':
+            dataset = Omniglot_dataset(root='./data', download=True, train=mode)
+        else:
+            dataset = MNIST(root='./data', download=True, train=mode)
+        data = getattr(dataset, 'train_data' if mode else 'test_data')
+        labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
+
+        tensor_dataset = tnt.dataset.TensorDataset([data, labels])
+
+        print("-----------------------------------------")
+        print(dataset)
+        print(data[0][14])
+        print("- - - - - - - - - - - - - - - - - - - - -")
+        print("data.size(): ", data.size())
+        print('type(data): ', type(data))
+        print('type(data[0][0][0]): ', type(data[0][0][0]))
+        print('data[0][0][0]: ', data[0][0][0])
+        #print("data.mean(): ", data.mean())
+        print("data.min(): ", data.min())
+        print("data.max(): ", data.max())
+        print("- - - - - - - - - - - - - - - - - - - - -")
+        print("labels.size(): ", labels.size())
+        print("type(labels): ", type(labels))
+        print("type(labels[0]): ", type(labels[0]))
+        print("labels[0]: ", labels[0])
+        print("labels.min(): ", labels.min())
+        print("labels.max(): ", labels.max())
+        print("-----------------------------------------")
+
+        return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
+
+    def processor_omniglot(sample):
         data, labels, training = sample
+        print("- - - - - - - - - - - - - - - - - - - - -")
+        print("data.size(): ", data.size())
+        print('type(data): ', type(data))
+        print('type(data[0][0][0]): ', type(data[0][0][0]))
+        print('data[0][0][0]: ', data[0][0][0])
+        # print("data.mean(): ", data.mean())
+        print("data.min(): ", data.min())
+        print("data.max(): ", data.max())
+        print("- - - - - - - - - - - - - - - - - - - - -")
+        print("labels.size(): ", labels.size())
+        print("type(labels): ", type(labels))
+        print("type(labels[0]): ", type(labels[0]))
+        print("labels[0]: ", labels[0])
+        print("-----------------------------------------")
+        print("training: ", training)
+
+        data = augmentation(data.unsqueeze(1).float())
+        #labels = labels.type(torch.LongTensor)
+        labels = torch.LongTensor(labels)
+
+        labels = torch.eye(NUM_CLASSES).index_select(dim=0, index=labels)
+
+        data = Variable(data).cuda()
+        labels = Variable(labels).cuda()
+
+        if training:
+            classes, reconstructions = model(data, labels)
+        else:
+            classes, reconstructions = model(data)
+
+        loss = capsule_loss(data, labels, classes, reconstructions)
+
+        return loss, classes
+
+    def processor_mnist(sample):
+        data, labels, training = sample
+        print("- - - - - - - - - - - - - - - - - - - - -")
+        print("data.size(): ", data.size())
+        print('type(data): ', type(data))
+        print('type(data[0][0][0]): ', type(data[0][0][0]))
+        print('data[0][0][0]: ', data[0][0][0])
+        # print("data.mean(): ", data.mean())
+        print("data.min(): ", data.min())
+        print("data.max(): ", data.max())
+        print("- - - - - - - - - - - - - - - - - - - - -")
+        print("labels.size(): ", labels.size())
+        print("type(labels): ", type(labels))
+        print("type(labels[0]): ", type(labels[0]))
+        print("labels[0]: ", labels[0])
+        print("-----------------------------------------")
+        print("training: ", training)
 
         data = augmentation(data.unsqueeze(1).float() / 255.0)
         labels = torch.LongTensor(labels)
+        print("type(labels): ", type(labels))
 
         labels = torch.eye(NUM_CLASSES).index_select(dim=0, index=labels)
 
@@ -462,6 +649,7 @@ if __name__ == "__main__":
 
 
     def on_end_epoch(state):
+        dataset_used = args.get('d')
         print('[Epoch %d] Training Loss: %.4f (Accuracy: %.2f%%)' % (
             state['epoch'], meter_loss.value()[0], meter_accuracy.value()[0]))
 
@@ -469,8 +657,10 @@ if __name__ == "__main__":
         train_error_logger.log(state['epoch'], meter_accuracy.value()[0])
 
         reset_meters()
-
-        engine.test(processor, get_iterator_omniglot(False))
+        if dataset_used == 'Omniglot':
+            engine.test(processor_omniglot, get_iterator(False, dataset_used=dataset_used))
+        else:
+            engine.test(processor_mnist, get_iterator(False, dataset_used=dataset_used))
         test_loss_logger.log(state['epoch'], meter_loss.value()[0])
         test_accuracy_logger.log(state['epoch'], meter_accuracy.value()[0])
         #confusion_logger.log(confusion_meter.value())
@@ -481,8 +671,10 @@ if __name__ == "__main__":
         torch.save(model.state_dict(), 'epochs/epoch_%d.pt' % state['epoch'])
 
         # Reconstruction visualization.
-
-        test_sample = next(iter(get_iterator_omniglot(False)))
+        if dataset_used == "Omniglot":
+            test_sample = next(iter(get_iterator_omniglot(False)))
+        else:
+            test_sample = next(iter(get_iterator_mnist(False)))
 
         ground_truth = (test_sample[0].unsqueeze(1).float() / 255.0)
         _, reconstructions = model(Variable(ground_truth).cuda())
@@ -509,4 +701,7 @@ if __name__ == "__main__":
     engine.hooks['on_start_epoch'] = on_start_epoch
     engine.hooks['on_end_epoch'] = on_end_epoch
 
-    engine.train(processor, get_iterator_omniglot(True), maxepoch=NUM_EPOCHS, optimizer=optimizer)
+    if args.get('d') == "Omniglot":
+        engine.train(processor_omniglot, get_iterator(True, dataset_used='Omniglot'), maxepoch=NUM_EPOCHS, optimizer=optimizer)
+    else:
+        engine.train(processor_mnist, get_iterator(True, dataset_used='MNIST'), maxepoch=NUM_EPOCHS, optimizer=optimizer)
