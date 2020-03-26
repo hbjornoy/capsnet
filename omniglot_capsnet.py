@@ -531,7 +531,7 @@ if __name__ == "__main__":
         labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
 
         tensor_dataset = tnt.dataset.TensorDataset([data, labels])
-
+        """
         print("-----------------------------------------")
         print(dataset)
         print(data[0][14])
@@ -551,6 +551,7 @@ if __name__ == "__main__":
         print("labels.min(): ", labels.min())
         print("labels.max(): ", labels.max())
         print("-----------------------------------------")
+        """
 
         return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
 
@@ -592,6 +593,7 @@ if __name__ == "__main__":
 
     def processor_mnist(sample):
         data, labels, training = sample
+        """
         print("- - - - - - - - - - - - - - - - - - - - -")
         print("data.size(): ", data.size())
         print('type(data): ', type(data))
@@ -607,10 +609,10 @@ if __name__ == "__main__":
         print("labels[0]: ", labels[0])
         print("-----------------------------------------")
         print("training: ", training)
+        """
 
         data = augmentation(data.unsqueeze(1).float() / 255.0)
         labels = torch.LongTensor(labels)
-        print("type(labels): ", type(labels))
 
         labels = torch.eye(NUM_CLASSES).index_select(dim=0, index=labels)
 
