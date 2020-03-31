@@ -636,10 +636,11 @@ if __name__ == "__main__":
         # Reconstruction visualization.
         if dataset_used == "Omniglot":
             test_sample = next(iter(get_iterator(False, dataset_used)))
+            ground_truth = test_sample[0].unsqueeze(1).float()
         else:
             test_sample = next(iter(get_iterator(False, dataset_used)))
+            ground_truth = (test_sample[0].unsqueeze(1).float() / 255.0)
 
-        ground_truth = (test_sample[0].unsqueeze(1).float() / 255.0)
         _, reconstructions = model(Variable(ground_truth).cuda())
         reconstruction = reconstructions.cpu().view_as(ground_truth).data
 
