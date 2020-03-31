@@ -233,8 +233,8 @@ class CapsuleNet_omniglot(nn.Module):
     def __init__(self, **kwargs):
         super(CapsuleNet_omniglot, self).__init__()
 
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=2)
-        self.conv2 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=11, stride=2)
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=128, kernel_size=9, stride=2)
+        self.conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=11, stride=2)
 
         self.primary_capsules = CapsuleLayer(num_capsules=8, num_route_nodes=-1, in_channels=256, out_channels=32,
                                              kernel_size=9, stride=2, **kwargs)
@@ -246,7 +246,7 @@ class CapsuleNet_omniglot(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(512, 1024),
             nn.ReLU(inplace=True),
-            nn.Linear(1024, 784),
+            nn.Linear(1024, 11025),
             nn.Sigmoid()   # hmmm
         )
 
