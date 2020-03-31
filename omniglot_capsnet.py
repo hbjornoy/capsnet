@@ -193,9 +193,9 @@ class Sigmoid_scaling(torch.nn.Module):
 
 
 
-class CapsuleNet(nn.Module):
+class CapsuleNet_mnist(nn.Module):
     def __init__(self, **kwargs):
-        super(CapsuleNet, self).__init__()
+        super(CapsuleNet_mnist, self).__init__()
 
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=1)
         self.primary_capsules = CapsuleLayer(num_capsules=8, num_route_nodes=-1, in_channels=256, out_channels=32,
@@ -214,6 +214,45 @@ class CapsuleNet(nn.Module):
 
     def forward(self, x, y=None):
         x = F.relu(self.conv1(x), inplace=True)
+        x = self.primary_capsules(x)
+        x = self.digit_capsules(x).squeeze().transpose(0, 1)
+
+        classes = (x ** 2).sum(dim=-1) ** 0.5
+        classes = F.softmax(classes, dim=-1)
+
+        if y is None:
+            # In all batches, get the most active capsule.
+            _, max_length_indices = classes.max(dim=1)
+            y = Variable(torch.eye(NUM_CLASSES)).cuda().index_select(dim=0, index=max_length_indices.data)
+
+        reconstructions = self.decoder((x * y[:, :, None]).view(x.size(0), -1))
+
+        return classes, reconstructions
+
+class CapsuleNet_omniglot(nn.Module):
+    def __init__(self, **kwargs):
+        super(CapsuleNet_omniglot, self).__init__()
+
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=2)
+        self.conv2 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=11, stride=2)
+
+        self.primary_capsules = CapsuleLayer(num_capsules=8, num_route_nodes=-1, in_channels=256, out_channels=32,
+                                             kernel_size=9, stride=2, **kwargs)
+        self.digit_capsules = CapsuleLayer(num_capsules=NUM_CLASSES, num_route_nodes= 32 * 6 * 6, in_channels=8,
+                                           out_channels=16, **kwargs)
+
+        self.decoder = nn.Sequential(
+            nn.Linear(16 * NUM_CLASSES, 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 784),
+            nn.Sigmoid()   # hmmm
+        )
+
+    def forward(self, x, y=None):
+        x = F.relu(self.conv1(x), inplace=True)
+        x = F.relu(self.conv2(x), inplace=True)
         x = self.primary_capsules(x)
         x = self.digit_capsules(x).squeeze().transpose(0, 1)
 
@@ -316,7 +355,10 @@ if __name__ == "__main__":
     else:
         visdom_env = '-'.join(['%s' % value[:3] if type(value) is str else '%s:%s' % (key, int(value)) for (key, value) in args.items()])
     arg_loss = args.pop('loss', False)
-    model = CapsuleNet(**args)
+    if args.get('d') == "Omniglot":
+        model = CapsuleNet_omniglot(**args)
+    else:
+        model = CapsuleNet_mnist(**args)
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
     if torch.cuda.is_available():
         model.cuda()
