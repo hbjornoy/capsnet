@@ -516,54 +516,6 @@ if __name__ == "__main__":
     def convert_imagepaths_to_tensors(dataset):
         return 0
 
-
-    def get_iterator_omniglot_old(mode):
-        if mode:
-            dataset = ImageFolder(root='./language_dataset/images_background', transform=None)
-        else:
-            dataset = ImageFolder(root='./language_dataset/images_evaluation', transform=None)
-        data_orig = getattr(dataset, 'samples')
-
-        data_list = []
-        print("Unpacking images into tensor")
-        for i, tuple in enumerate(data_orig):
-            pil = dataset.loader(tuple[0])
-            gray_pil = transforms.functional.to_grayscale(pil, num_output_channels=1)
-            tensor_img = transforms.functional.to_tensor(gray_pil)
-            data_list.append(tensor_img)
-            if i%5000 == 0:
-                print("{} images processed out of {}".format(i+1, len(data_orig)))
-        print("Finished: {} images processed out of {}".format(i+1, len(data_orig)))
-        data = torch.cat(data_list, out=torch.Tensor(len(data_orig), 105, 105))
-
-        labels = getattr(dataset, 'targets')
-        labels = torch.LongTensor(labels)
-
-        tensor_dataset = tnt.dataset.TensorDataset([data, labels])
-
-        print("-----------------------------------------")
-        print(dataset)
-        print(data[0][50])
-        print("- - - - - - - - - - - - - - - - - - - - -")
-        print("data.size(): ", data.size())
-        print('type(data): ', type(data))
-        print('type(data[0][0][0]): ', type(data[0][0][0]))
-        print('data[0][0][0]: ', data[0][0][0])
-        print("data.mean(): ", data.mean())
-        print("data.min(): ", data.min())
-        print("data.max(): ", data.max())
-        print("- - - - - - - - - - - - - - - - - - - - -")
-        print("labels.size(): ", labels.size())
-        print("type(labels): ", type(labels))
-        print("type(labels[0]): ", type(labels[0]))
-        print("labels[0]: ", labels[0])
-        print("labels.min(): ", labels.min())
-        print("labels.max(): ", labels.max())
-        print("-----------------------------------------")
-
-        return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
-
-
     def get_iterator(mode, dataset_used='Omniglot'):
         if dataset_used == 'Omniglot':
             dataset = Omniglot_dataset(root='./data', download=True, train=mode)
@@ -599,22 +551,6 @@ if __name__ == "__main__":
 
     def processor_omniglot(sample):
         data, labels, training = sample
-        print("- - - - - - - - - - - - - - - - - - - - -")
-        print("data.size(): ", data.size())
-        print('type(data): ', type(data))
-        print('type(data[0][0][0]): ', type(data[0][0][0]))
-        print('data[0][0][0]: ', data[0][0][0])
-        # print("data.mean(): ", data.mean())
-        print("data.min(): ", data.min())
-        print("data.max(): ", data.max())
-        print("- - - - - - - - - - - - - - - - - - - - -")
-        print("labels.size(): ", labels.size())
-        print("type(labels): ", type(labels))
-        print("type(labels[0]): ", type(labels[0]))
-        print("labels[0]: ", labels[0])
-        print("-----------------------------------------")
-        print("training: ", training)
-
         data = augmentation(data.unsqueeze(1).float())
         #labels = labels.type(torch.LongTensor)
         labels = torch.LongTensor(labels)
@@ -635,23 +571,6 @@ if __name__ == "__main__":
 
     def processor_mnist(sample):
         data, labels, training = sample
-        """
-        print("- - - - - - - - - - - - - - - - - - - - -")
-        print("data.size(): ", data.size())
-        print('type(data): ', type(data))
-        print('type(data[0][0][0]): ', type(data[0][0][0]))
-        print('data[0][0][0]: ', data[0][0][0])
-        # print("data.mean(): ", data.mean())
-        print("data.min(): ", data.min())
-        print("data.max(): ", data.max())
-        print("- - - - - - - - - - - - - - - - - - - - -")
-        print("labels.size(): ", labels.size())
-        print("type(labels): ", type(labels))
-        print("type(labels[0]): ", type(labels[0]))
-        print("labels[0]: ", labels[0])
-        print("-----------------------------------------")
-        print("training: ", training)
-        """
 
         data = augmentation(data.unsqueeze(1).float() / 255.0)
         labels = torch.LongTensor(labels)
