@@ -1,6 +1,7 @@
 .idea/
 data/
 omniglot_raw_data/
+symbol_dataset/
 logs/
 epochs/*
 !epochs/.gitkeep

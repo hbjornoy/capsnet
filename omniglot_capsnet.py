@@ -433,12 +433,14 @@ if __name__ == "__main__":
             self.root = root
             self.transform = transform
             self.train = train
-            self.raw_training_folder = 'omniglot_raw_data/images_background'
-            self.raw_testing_folder = 'omniglot_raw_data/images_evaluation'
+            self.raw_training_folder = 'symbol_dataset/training_set'
+            self.raw_testing_folder = 'symbol_dataset/testing_set'
 
             if download:
                 if not os.path.exists(os.path.join('omniglot_raw_data')):
                     subprocess.call("./download_omniglot.sh", shell=True, executable='/bin/bash')
+                if not os.path.exists('./symbol_dataset'):
+                    import create_symbols_dataset
                 self.process()
 
             if not self._check_exists():
