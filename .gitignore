@@ -7,3 +7,4 @@ epochs/*
 !epochs/.gitkeep
 venv/
 .DS_Store
+__pycache__/

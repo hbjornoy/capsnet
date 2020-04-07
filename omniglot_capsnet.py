@@ -43,11 +43,19 @@ parser.add_argument('-t1', type=float, metavar='t1',
                     help='tanh: ex:1')
 parser.add_argument('-d', type=str, default='Omniglot', metavar='dataset_used',
                     help='Dataset used. Possible datasets: Omniglot, MNIST')
+parser.add_argument('-c', type=int, metavar='num_classes',
+                    help='If dataset Omniglot one can define number of classes')
+parser.add_argument('-e', type=int, default=100, metavar='NUM_EPOCHS',
+                    help='The number of times to train trhough the whole dataset')
+
 global args
 args = vars(parser.parse_args())
 BATCH_SIZE = 3#100
-NUM_CLASSES = 1623 if args.get('d') == 'Omniglot' else 10
-NUM_EPOCHS = 100
+if args.get('c') is not None:
+    NUM_CLASSES = args.get('c')
+else:
+    NUM_CLASSES = 1623 if args.get('d') == 'Omniglot' else 10
+NUM_EPOCHS = args.get('e')
 NUM_ROUTING_ITERATIONS = 3
 
 
@@ -345,6 +353,8 @@ if __name__ == "__main__":
     import torchvision
     from torchvision.datasets.utils import makedir_exist_ok
 
+    from create_symbols_dataset import create_symbols_dataset
+
     #global args
     #args = vars(parser.parse_args())
     print(args)
@@ -441,7 +451,7 @@ if __name__ == "__main__":
                     subprocess.call("./download_omniglot.sh", shell=True, executable='/bin/bash')
                 if not os.path.exists('./symbol_dataset'):
                     print("importing symbols")
-                    exec(open('create_symbols_dataset.py').read())
+                    create_symbols_dataset(num_classes=NUM_CLASSES)
                 self.process()
 
             if not self._check_exists():
@@ -671,3 +681,10 @@ if __name__ == "__main__":
         engine.train(processor_omniglot, get_iterator(True, dataset_used='Omniglot'), maxepoch=NUM_EPOCHS, optimizer=optimizer)
     else:
         engine.train(processor_mnist, get_iterator(True, dataset_used='MNIST'), maxepoch=NUM_EPOCHS, optimizer=optimizer)
+
+
+    # delete processed files
+    if os.path.exists('data/Omniglot_dataset/omniglot_training.pt'):
+        os.remove('data/Omniglot_dataset/omniglot_training.pt')
+    if os.path.exists('data/Omniglot_dataset/omniglot_test.pt'):
+        os.remove('data/Omniglot_dataset/omniglot_test.pt')
