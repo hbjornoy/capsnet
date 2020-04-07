@@ -2,6 +2,7 @@ import os
 import shutil
 from numpy.random import seed, shuffle
 import re
+from sys import platform
 
 def listdir_nohidden(path):
     """create a shuffled list of all the folders/files in a given folder"""
@@ -20,7 +21,7 @@ def mkdir(path):
 
 
 if __name__ == "__main__":
-    if os.name == "posix":
+    if platform == "darwin":
         capsnet_path = "/Users/havardbjornoy/capsnet"
     else:
         capsnet_path = "/work/stud/haavabjo/capsnet"

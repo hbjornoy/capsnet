@@ -45,8 +45,8 @@ parser.add_argument('-d', type=str, default='Omniglot', metavar='dataset_used',
                     help='Dataset used. Possible datasets: Omniglot, MNIST')
 global args
 args = vars(parser.parse_args())
-BATCH_SIZE = 100
-NUM_CLASSES = 30 if args.get('d') == 'Omniglot' else 10
+BATCH_SIZE = 3#100
+NUM_CLASSES = 1623 if args.get('d') == 'Omniglot' else 10
 NUM_EPOCHS = 100
 NUM_ROUTING_ITERATIONS = 3
 
@@ -440,7 +440,8 @@ if __name__ == "__main__":
                 if not os.path.exists(os.path.join('omniglot_raw_data')):
                     subprocess.call("./download_omniglot.sh", shell=True, executable='/bin/bash')
                 if not os.path.exists('./symbol_dataset'):
-                    import create_symbols_dataset
+                    print("importing symbols")
+                    exec(open('create_symbols_dataset.py').read())
                 self.process()
 
             if not self._check_exists():
@@ -554,7 +555,6 @@ if __name__ == "__main__":
     def processor_omniglot(sample):
         data, labels, training = sample
         data = augmentation(data.unsqueeze(1).float())
-        #labels = labels.type(torch.LongTensor)
         labels = torch.LongTensor(labels)
 
         labels = torch.eye(NUM_CLASSES).index_select(dim=0, index=labels)
