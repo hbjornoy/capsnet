@@ -6,6 +6,7 @@ PyTorch implementation inspired and based on Kenta Iwasaki @ Gram.AI.
 """
 import sys
 import os
+import shutil
 import time
 import argparse
 sys.setrecursionlimit(15000)
@@ -58,6 +59,14 @@ else:
 NUM_EPOCHS = args.get('e')
 NUM_ROUTING_ITERATIONS = 3
 
+
+# delete processed files
+if os.path.exists('data/Omniglot_dataset/omniglot_training.pt'):
+    os.remove('data/Omniglot_dataset/omniglot_training.pt')
+if os.path.exists('data/Omniglot_dataset/omniglot_test.pt'):
+    os.remove('data/Omniglot_dataset/omniglot_test.pt')
+if os.path.exists('symbol_dataset/'):
+    shutil.rmtree('symbol_dataset/')
 
 def softmax(input, dim=1):
     transposed_input = input.transpose(dim, len(input.size()) - 1)
@@ -566,7 +575,8 @@ if __name__ == "__main__":
         data, labels, training = sample
         data = augmentation(data.unsqueeze(1).float())
         labels = torch.LongTensor(labels)
-
+        print(labels)
+        print(torch.eye(NUM_CLASSES))
         labels = torch.eye(NUM_CLASSES).index_select(dim=0, index=labels)
 
         data = Variable(data).cuda()
@@ -688,3 +698,5 @@ if __name__ == "__main__":
         os.remove('data/Omniglot_dataset/omniglot_training.pt')
     if os.path.exists('data/Omniglot_dataset/omniglot_test.pt'):
         os.remove('data/Omniglot_dataset/omniglot_test.pt')
+    if os.path.exists('symbol_dataset/'):
+        shutil.rmtree('symbol_dataset/')
