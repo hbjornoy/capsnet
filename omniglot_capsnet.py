@@ -61,10 +61,10 @@ NUM_ROUTING_ITERATIONS = 3
 
 
 # delete processed files
-if os.path.exists('data/Omniglot_dataset/omniglot_training.pt'):
-    os.remove('data/Omniglot_dataset/omniglot_training.pt')
-if os.path.exists('data/Omniglot_dataset/omniglot_test.pt'):
-    os.remove('data/Omniglot_dataset/omniglot_test.pt')
+if os.path.exists('data/Omniglot_dataset/processed/omniglot_training.pt'):
+    os.remove('data/Omniglot_dataset/processed/omniglot_training.pt')
+if os.path.exists('data/Omniglot_dataset/processed/omniglot_test.pt'):
+    os.remove('data/Omniglot_dataset/processed/omniglot_test.pt')
 if os.path.exists('symbol_dataset/'):
     shutil.rmtree('symbol_dataset/')
 
@@ -273,9 +273,11 @@ class CapsuleNet_omniglot(nn.Module):
         x = self.primary_capsules(x)
         x = self.digit_capsules(x).squeeze().transpose(0, 1)
 
+        # fix for last_batch beeing only one sample
+        if len(list(x.size())) < 3:
+            x = x.transpose(0,1).unsqueeze_(0)
         classes = (x ** 2).sum(dim=-1) ** 0.5
         classes = F.softmax(classes, dim=-1)
-
         if y is None:
             # In all batches, get the most active capsule.
             _, max_length_indices = classes.max(dim=1)
@@ -575,8 +577,6 @@ if __name__ == "__main__":
         data, labels, training = sample
         data = augmentation(data.unsqueeze(1).float())
         labels = torch.LongTensor(labels)
-        print(labels)
-        print(torch.eye(NUM_CLASSES))
         labels = torch.eye(NUM_CLASSES).index_select(dim=0, index=labels)
 
         data = Variable(data).cuda()
@@ -694,9 +694,9 @@ if __name__ == "__main__":
 
 
     # delete processed files
-    if os.path.exists('data/Omniglot_dataset/omniglot_training.pt'):
-        os.remove('data/Omniglot_dataset/omniglot_training.pt')
-    if os.path.exists('data/Omniglot_dataset/omniglot_test.pt'):
-        os.remove('data/Omniglot_dataset/omniglot_test.pt')
+    if os.path.exists('data/Omniglot_dataset/processed/omniglot_training.pt'):
+        os.remove('data/Omniglot_dataset/processed/omniglot_training.pt')
+    if os.path.exists('data/Omniglot_dataset/processed/omniglot_test.pt'):
+        os.remove('data/Omniglot_dataset/processed/omniglot_test.pt')
     if os.path.exists('symbol_dataset/'):
         shutil.rmtree('symbol_dataset/')

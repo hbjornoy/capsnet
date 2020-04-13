@@ -41,7 +41,6 @@ def create_symbols_dataset(num_classes):
     for set in listdir_nohidden(raw):
 
         for lang in listdir_nohidden(os.path.join(raw, set)):
-            print(set + '/' + lang)
 
             for char in listdir_nohidden(os.path.join(raw, set, lang)):
                 if class_counter == num_classes:
