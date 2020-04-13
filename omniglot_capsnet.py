@@ -50,6 +50,8 @@ parser.add_argument('-e', type=int, default=100, metavar='NUM_EPOCHS',
                     help='The number of times to train trhough the whole dataset')
 parser.add_argument('-b', type=int, default=100, metavar='BATCH_SIZE',
                     help='The batch-size')
+parser.add_argument('-smax', type=int, metavar='SAMPLE_PER_CLASS',
+                    help='Limit the training and testing samples per class')
 
 global args
 args = vars(parser.parse_args())
@@ -542,6 +544,25 @@ if __name__ == "__main__":
     def convert_imagepaths_to_tensors(dataset):
         return 0
 
+
+    def limit_dataset_by_max_samples_per_class(data, labels, sample_per_class, num_classes):
+        counter_by_class_list = [0]*num_classes
+        new_data = []
+        new_labels = []
+
+        for i in range(labels.shape[0]):
+            if counter_by_class_list[labels[i]] < sample_per_class:
+                new_data = data[i]
+                new_labels = labels[i]
+                counter_by_class_list[labels[i]] += 1
+            elif sum(counter_by_class_list) == num_classes*sample_per_class:
+                break
+        if sum(counter_by_class_list) < num_classes*sample_per_class:
+            print("WARNING: Less samples per class than defined in parameters.")
+            print("counter_by_class_list: ", counter_by_class_list)
+        return torch.Tensor(new_data), torch.Tensor(new_labels)
+
+
     def get_iterator(mode, dataset_used='Omniglot'):
         if dataset_used == 'Omniglot':
             dataset = Omniglot_dataset(root='./data', download=True, train=mode)
@@ -550,6 +571,7 @@ if __name__ == "__main__":
         data = getattr(dataset, 'train_data' if mode else 'test_data')
         labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
 
+        data, labels = limit_dataset_by_max_samples_per_class(data, labels, args.get('smax'))
         tensor_dataset = tnt.dataset.TensorDataset([data, labels])
         """
         print("-----------------------------------------")
