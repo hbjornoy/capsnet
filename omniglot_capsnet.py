@@ -48,10 +48,12 @@ parser.add_argument('-c', type=int, metavar='num_classes',
                     help='If dataset Omniglot one can define number of classes')
 parser.add_argument('-e', type=int, default=100, metavar='NUM_EPOCHS',
                     help='The number of times to train trhough the whole dataset')
+parser.add_argument('-b', type=int, default=100, metavar='BATCH_SIZE',
+                    help='The batch-size')
 
 global args
 args = vars(parser.parse_args())
-BATCH_SIZE = 3#100
+BATCH_SIZE = args.get('b') #100
 if args.get('c') is not None:
     NUM_CLASSES = args.get('c')
 else:
