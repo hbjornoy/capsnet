@@ -51,7 +51,7 @@ parser.add_argument('-e', type=int, default=100, metavar='NUM_EPOCHS',
 parser.add_argument('-b', type=int, default=100, metavar='BATCH_SIZE',
                     help='The batch-size')
 parser.add_argument('-smax', type=int, metavar='SAMPLE_PER_CLASS',
-                    help='Limit the training and testing samples per class')
+                    help='Limit the training samples per class')
 
 global args
 args = vars(parser.parse_args())
@@ -574,8 +574,11 @@ if __name__ == "__main__":
         data = getattr(dataset, 'train_data' if mode else 'test_data')
         labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
 
-        data, labels = limit_dataset_by_max_samples_per_class(data, labels,
-                args.get('smax'), NUM_CLASSES)
+        if mode:
+            data, labels = limit_dataset_by_max_samples_per_class(data, labels,
+                                args.get('smax'), NUM_CLASSES)
+        print('(Mode: %s) Number of samples in dataset: %d' % (
+            mode, data.shape[0]))
         tensor_dataset = tnt.dataset.TensorDataset([data, labels])
         """
         print("-----------------------------------------")
