@@ -551,16 +551,19 @@ if __name__ == "__main__":
         new_labels = []
 
         for i in range(labels.shape[0]):
-            if counter_by_class_list[labels[i]] < sample_per_class:
-                new_data = data[i]
-                new_labels = labels[i]
-                counter_by_class_list[labels[i]] += 1
-            elif sum(counter_by_class_list) == num_classes*sample_per_class:
-                break
+            try :
+                if counter_by_class_list[labels[i]] < sample_per_class:
+                    new_data.append(data[i].unsqueeze_(0))
+                    new_labels.append(labels[i].unsqueeze_(0))
+                    counter_by_class_list[labels[i]] += 1
+                elif sum(counter_by_class_list) == num_classes*sample_per_class:
+                    break
+            except IndexError:
+                pass
         if sum(counter_by_class_list) < num_classes*sample_per_class:
             print("WARNING: Less samples per class than defined in parameters.")
             print("counter_by_class_list: ", counter_by_class_list)
-        return torch.Tensor(new_data), torch.Tensor(new_labels)
+        return torch.cat(new_data, dim=0), torch.cat(new_labels, dim=0)
 
 
     def get_iterator(mode, dataset_used='Omniglot'):
@@ -571,7 +574,8 @@ if __name__ == "__main__":
         data = getattr(dataset, 'train_data' if mode else 'test_data')
         labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
 
-        data, labels = limit_dataset_by_max_samples_per_class(data, labels, args.get('smax'))
+        data, labels = limit_dataset_by_max_samples_per_class(data, labels,
+                args.get('smax'), NUM_CLASSES)
         tensor_dataset = tnt.dataset.TensorDataset([data, labels])
         """
         print("-----------------------------------------")
