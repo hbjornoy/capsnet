@@ -45,9 +45,9 @@ parser.add_argument('-t1', type=float, metavar='t1',
 parser.add_argument('-d', type=str, default='Omniglot', metavar='dataset_used',
                     help='Dataset used. Possible datasets: Omniglot, MNIST')
 parser.add_argument('-c', type=int, metavar='num_classes',
-                    help='If dataset Omniglot one can define number of classes')
+                    help='If dataset Omniglot and MNIST one can define number of classes')
 parser.add_argument('-e', type=int, default=100, metavar='NUM_EPOCHS',
-                    help='The number of times to train trhough the whole dataset')
+                    help='The number of times to train through the whole dataset')
 parser.add_argument('-b', type=int, default=100, metavar='BATCH_SIZE',
                     help='The batch-size')
 parser.add_argument('-smax', type=int, metavar='SAMPLE_PER_CLASS',
@@ -71,6 +71,7 @@ if os.path.exists('data/Omniglot_dataset/processed/omniglot_test.pt'):
     os.remove('data/Omniglot_dataset/processed/omniglot_test.pt')
 if os.path.exists('symbol_dataset/'):
     shutil.rmtree('symbol_dataset/')
+
 
 def softmax(input, dim=1):
     transposed_input = input.transpose(dim, len(input.size()) - 1)
@@ -295,7 +296,7 @@ class CapsuleNet_omniglot(nn.Module):
 class CapsuleLoss(nn.Module):
     def __init__(self, loss_func='margin'):
         super(CapsuleLoss, self).__init__()
-        self.reconstruction_loss = nn.MSELoss(size_average=False)
+        self.reconstruction_loss = nn.MSELoss(size_average=True)
         self.loss_function = self.define_loss_function(loss_func)
 
     def forward(self, images, labels, classes, reconstructions):
@@ -321,7 +322,7 @@ class CapsuleLoss(nn.Module):
         right = F.relu(classes - 0.1, inplace=True) ** 2
 
         margin_loss = labels * left + 0.5 * (1. - labels) * right
-        margin_loss = margin_loss.sum()
+        margin_loss = margin_loss.mean()
 
         return (margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
 
@@ -577,8 +578,8 @@ if __name__ == "__main__":
         if mode:
             data, labels = limit_dataset_by_max_samples_per_class(data, labels,
                                 args.get('smax'), NUM_CLASSES)
-        print('(Mode: %s) Number of samples in dataset: %d' % (
-            mode, data.shape[0]))
+            print('(Mode: %s) Number of samples in dataset: %d' % (
+                    mode, data.shape[0]))
         tensor_dataset = tnt.dataset.TensorDataset([data, labels])
         """
         print("-----------------------------------------")
@@ -707,7 +708,8 @@ if __name__ == "__main__":
         #assert torch.numel(images) == torch.numel(reconstructions)
         #images = images.view(reconstructions.size()[0], -1)
 
-        reconstruction_loss_logger.log(state['epoch'], 0.0005*nn.MSELoss(size_average=False)(reconstruction, ground_truth)) # log reconstruction loss on unseen photos
+        reconstruction_loss_logger.log(state['epoch'],
+                0.0005*nn.MSELoss(size_average=True)(reconstruction, ground_truth)) # log reconstruction loss on unseen photos
 
     # def on_start(state):
     #     state['epoch'] = 327
