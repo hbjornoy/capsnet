@@ -397,6 +397,7 @@ if __name__ == "__main__":
     meter_loss = tnt.meter.AverageValueMeter()
     meter_accuracy = tnt.meter.ClassErrorMeter(accuracy=True)
     confusion_meter = tnt.meter.ConfusionMeter(NUM_CLASSES, normalized=True)
+    AP_meter = tnt.meter.APMeter()
     layoutoptions = {'plotly': {'legend': dict(x=0.8, y=0.5, traceorder='normal', font=dict(family='sans-serif',size=9,color='#000'), bgcolor='rgba(0,0,0,0)', bordercolor='rgba(0,0,0,0)', borderwidth=2)}}
 
     train_loss_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Train Loss', 
@@ -418,6 +419,12 @@ if __name__ == "__main__":
                                                                                 'xlabel': 'Epochs', 
                                                                                 'ylabel': 'Test accuracy', 
                                                                                 'legend': [visdom_env],
+                                                                                'layoutopts': layoutoptions})
+    AP_legend = ["{:04d}".format(c) for c in range(NUM_CLASSES)]
+    average_precision_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Average Precision per class',
+                                                                                'xlabel': 'Class',
+                                                                                'ylabel': 'Average precision',
+                                                                                'legend': AP_legend,
                                                                                 'layoutopts': layoutoptions})
     confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': list(range(NUM_CLASSES)), 'rownames': list(range(NUM_CLASSES))})
     ground_truth_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Ground Truth'})
@@ -645,6 +652,7 @@ if __name__ == "__main__":
         meter_accuracy.reset()
         meter_loss.reset()
         confusion_meter.reset()
+        AP_meter.reset()
 
 
     def on_sample(state):
@@ -654,6 +662,7 @@ if __name__ == "__main__":
     def on_forward(state):
         meter_accuracy.add(state['output'].data, torch.LongTensor(state['sample'][1]))
         confusion_meter.add(state['output'].data, torch.LongTensor(state['sample'][1]))
+        AP_meter.add(state['output'].data, torch.LongTensor(state['sample'][1]))
         meter_loss.add(state['loss'].item())
 
 
@@ -678,6 +687,7 @@ if __name__ == "__main__":
         test_loss_logger.log(state['epoch'], meter_loss.value()[0])
         test_accuracy_logger.log(state['epoch'], meter_accuracy.value()[0])
         confusion_logger.log(confusion_meter.value())
+        confusion_logger.log(AP_meter.value())
 
         print('[Epoch %d] Testing Loss: %.4f (Accuracy: %.2f%%)' % (
             state['epoch'], meter_loss.value()[0], meter_accuracy.value()[0]))
