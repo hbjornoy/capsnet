@@ -396,7 +396,7 @@ if __name__ == "__main__":
     engine = Engine()
     meter_loss = tnt.meter.AverageValueMeter()
     meter_accuracy = tnt.meter.ClassErrorMeter(accuracy=True)
-    #confusion_meter = tnt.meter.ConfusionMeter(NUM_CLASSES, normalized=True)
+    confusion_meter = tnt.meter.ConfusionMeter(NUM_CLASSES, normalized=True)
     layoutoptions = {'plotly': {'legend': dict(x=0.8, y=0.5, traceorder='normal', font=dict(family='sans-serif',size=9,color='#000'), bgcolor='rgba(0,0,0,0)', bordercolor='rgba(0,0,0,0)', borderwidth=2)}}
 
     train_loss_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Train Loss', 
@@ -419,7 +419,7 @@ if __name__ == "__main__":
                                                                                 'ylabel': 'Test accuracy', 
                                                                                 'legend': [visdom_env],
                                                                                 'layoutopts': layoutoptions})
-    # confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': list(range(NUM_CLASSES)), 'rownames': list(range(NUM_CLASSES))})
+    confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': list(range(NUM_CLASSES)), 'rownames': list(range(NUM_CLASSES))})
     ground_truth_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Ground Truth'})
     reconstruction_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction ' + visdom_env})
     reconstruction_error_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction Error ' + visdom_env})
@@ -542,9 +542,6 @@ if __name__ == "__main__":
 # ---------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
 
-    def convert_imagepaths_to_tensors(dataset):
-        return 0
-
 
     def limit_dataset_by_max_samples_per_class(data, labels, sample_per_class, num_classes):
         counter_by_class_list = [0]*num_classes
@@ -647,7 +644,7 @@ if __name__ == "__main__":
     def reset_meters():
         meter_accuracy.reset()
         meter_loss.reset()
-        #confusion_meter.reset()
+        confusion_meter.reset()
 
 
     def on_sample(state):
@@ -656,7 +653,7 @@ if __name__ == "__main__":
 
     def on_forward(state):
         meter_accuracy.add(state['output'].data, torch.LongTensor(state['sample'][1]))
-        #confusion_meter.add(state['output'].data, torch.LongTensor(state['sample'][1]))
+        confusion_meter.add(state['output'].data, torch.LongTensor(state['sample'][1]))
         meter_loss.add(state['loss'].item())
 
 
@@ -680,7 +677,7 @@ if __name__ == "__main__":
             engine.test(processor_mnist, get_iterator(False, dataset_used=dataset_used))
         test_loss_logger.log(state['epoch'], meter_loss.value()[0])
         test_accuracy_logger.log(state['epoch'], meter_accuracy.value()[0])
-        #confusion_logger.log(confusion_meter.value())
+        confusion_logger.log(confusion_meter.value())
 
         print('[Epoch %d] Testing Loss: %.4f (Accuracy: %.2f%%)' % (
             state['epoch'], meter_loss.value()[0], meter_accuracy.value()[0]))
