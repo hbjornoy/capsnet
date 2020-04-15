@@ -52,6 +52,8 @@ parser.add_argument('-b', type=int, default=100, metavar='BATCH_SIZE',
                     help='The batch-size')
 parser.add_argument('-smax', type=int, metavar='SAMPLE_PER_CLASS',
                     help='Limit the training samples per class')
+parser.add_argument('-recw', type=float, default=0.0005, metavar='SAMPLE_PER_CLASS',
+                    help='Limit the training samples per class')
 
 global args
 args = vars(parser.parse_args())
@@ -320,17 +322,17 @@ class CapsuleLoss(nn.Module):
         margin_loss = labels * left + 0.5 * (1. - labels) * right
         margin_loss = margin_loss.mean()
 
-        return (margin_loss + 0.0005 * reconstruction_loss) / images.size(0)
+        return (margin_loss + args.get('recw') * reconstruction_loss) / images.size(0)
 
     def crossentropy(self, images, labels, classes, reconstruction_loss):
         # Coeff scales the loss to the approx. the same magnitude as orig. -> reconstruction effect is approx. the same
         s_coeff = 20.85
         _, labels = labels.max(dim=1)
-        return (s_coeff*nn.functional.cross_entropy(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
+        return (s_coeff*nn.functional.cross_entropy(classes, labels) + args.get('recw') * reconstruction_loss) / images.size(0)
 
     def mse(self, images, labels, classes, reconstruction_loss):
         s_coeff = 679.8
-        return (s_coeff*nn.functional.mse_loss(classes, labels) + 0.0005 * reconstruction_loss) / images.size(0)
+        return (s_coeff*nn.functional.mse_loss(classes, labels) + args.get('recw') * reconstruction_loss) / images.size(0)
 
 
 def is_valid_args(**kwargs):
@@ -721,7 +723,7 @@ if __name__ == "__main__":
         #images = images.view(reconstructions.size()[0], -1)
 
         reconstruction_loss_logger.log(state['epoch'],
-                0.0005*nn.MSELoss(size_average=True)(reconstruction, ground_truth)) # log reconstruction loss on unseen photos
+                args.get('recw')*nn.MSELoss(size_average=True)(reconstruction, ground_truth)) # log reconstruction loss on unseen photos
 
     # def on_start(state):
     #     state['epoch'] = 327
