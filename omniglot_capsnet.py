@@ -64,14 +64,6 @@ NUM_EPOCHS = args.get('e')
 NUM_ROUTING_ITERATIONS = 3
 
 
-# delete processed files
-if os.path.exists('data/Omniglot_dataset/processed/omniglot_training.pt'):
-    os.remove('data/Omniglot_dataset/processed/omniglot_training.pt')
-if os.path.exists('data/Omniglot_dataset/processed/omniglot_test.pt'):
-    os.remove('data/Omniglot_dataset/processed/omniglot_test.pt')
-if os.path.exists('symbol_dataset/'):
-    shutil.rmtree('symbol_dataset/')
-
 
 def softmax(input, dim=1):
     transposed_input = input.transpose(dim, len(input.size()) - 1)
@@ -161,6 +153,7 @@ class CapsuleLayer(nn.Module):
     def squash_function(self, l2, a1=1, a2=0.2):
         return abs(l2)**a1 / (abs(l2)**a1 + a1)
 
+
 class Squash(torch.nn.Module):
 
     def __init__(self, **kwargs):
@@ -185,6 +178,7 @@ class Squash(torch.nn.Module):
         scale = self.scaling_function(l2)
         return scale * tensor / l2
 
+
 class Squash_default(torch.nn.Module):
     """
     increase a1 to get a steeper curve inplace
@@ -198,6 +192,7 @@ class Squash_default(torch.nn.Module):
 
     def forward(self, l2):
         return abs(l2)**self.a1 / (abs(l2)**self.a1 + self.a2)
+
 
 class Sigmoid_scaling(torch.nn.Module):
     """
@@ -250,6 +245,7 @@ class CapsuleNet_mnist(nn.Module):
         reconstructions = self.decoder((x * y[:, :, None]).view(x.size(0), -1))
 
         return classes, reconstructions
+
 
 class CapsuleNet_omniglot(nn.Module):
     def __init__(self, **kwargs):
@@ -473,7 +469,8 @@ if __name__ == "__main__":
                     subprocess.call("./download_omniglot.sh", shell=True, executable='/bin/bash')
                 if not os.path.exists('./symbol_dataset'):
                     print("importing symbols")
-                    create_symbols_dataset(num_classes=NUM_CLASSES)
+                    # Override this function as selection of num_classes is selected later
+                    create_symbols_dataset(num_classes=1623)
                 self.process()
 
             if not self._check_exists():
@@ -605,8 +602,10 @@ if __name__ == "__main__":
         print("labels.max(): ", labels.max())
         print("-----------------------------------------")
         """
-
-        return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
+        if not mode and dataset_used == 'MNIST':
+            return tensor_dataset.parallel(batch_size=50, num_workers=4, shuffle=mode)
+        else:
+            return tensor_dataset.parallel(batch_size=BATCH_SIZE, num_workers=4, shuffle=mode)
 
     def processor_omniglot(sample):
         data, labels, training = sample
