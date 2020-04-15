@@ -506,7 +506,11 @@ if __name__ == "__main__":
 
         def process(self):
 
+            global class_to_idx
+            
             if self._check_exists():
+                training_set = ImageFolder(root=self.raw_training_folder, transform=None)
+                class_to_idx = training_set.class_to_idx
                 return
 
             makedir_exist_ok(self.processed_folder)
@@ -539,8 +543,7 @@ if __name__ == "__main__":
                 else:
                     with open(os.path.join(self.processed_folder, self.test_file), 'wb') as f:
                         torch.save((data, labels), f)
-
-            self.class_to_idx = training_set.class_to_idx
+            class_to_idx = training_set.class_to_idx
 
             print('Done!')
 
@@ -582,7 +585,6 @@ if __name__ == "__main__":
             dataset = MNIST(root='./data', download=True, train=mode)
         data = getattr(dataset, 'train_data' if mode else 'test_data')
         labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
-        print(dataset.class_to_idx)
 
         if mode:
             data, labels = limit_dataset_by_max_samples_per_class(data, labels,
@@ -614,10 +616,7 @@ if __name__ == "__main__":
         print("labels.max(): ", labels.max())
         print("-----------------------------------------")
         """
-        global class_to_idx
-        if class_to_idx is None:
-            class_to_idx = dataset.class_to_idx
-            print(class_to_idx)
+        print(class_to_idx)
         if not mode and dataset_used == 'MNIST':
             return tensor_dataset.parallel(batch_size=50, num_workers=4, shuffle=mode)
         else:
