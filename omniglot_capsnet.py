@@ -420,11 +420,10 @@ if __name__ == "__main__":
                                                                                 'ylabel': 'Test accuracy', 
                                                                                 'legend': [visdom_env],
                                                                                 'layoutopts': layoutoptions})
-    AP_legend = ["{:04d}".format(c) for c in range(NUM_CLASSES)]
+    #AP_legend = ["{:04d}".format(c) for c in range(NUM_CLASSES)]
     average_precision_logger = VisdomPlotLogger('line', env=visdom_env, opts={'title': 'Average Precision per class',
                                                                                 'xlabel': 'Class',
                                                                                 'ylabel': 'Average precision',
-                                                                                'legend': AP_legend,
                                                                                 'layoutopts': layoutoptions})
     confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': list(range(NUM_CLASSES)), 'rownames': list(range(NUM_CLASSES))})
     ground_truth_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Ground Truth'})
@@ -662,7 +661,8 @@ if __name__ == "__main__":
     def on_forward(state):
         meter_accuracy.add(state['output'].data, torch.LongTensor(state['sample'][1]))
         confusion_meter.add(state['output'].data, torch.LongTensor(state['sample'][1]))
-        AP_meter.add(state['output'].data, torch.LongTensor(state['sample'][1]))
+        AP_meter.add(state['output'].data,
+                torch.nn.functional.one_hot(torch.LongTensor(state['sample'][1]), num_classes=NUM_CLASSES))
         meter_loss.add(state['loss'].item())
 
 
@@ -687,7 +687,8 @@ if __name__ == "__main__":
         test_loss_logger.log(state['epoch'], meter_loss.value()[0])
         test_accuracy_logger.log(state['epoch'], meter_accuracy.value()[0])
         confusion_logger.log(confusion_meter.value())
-        confusion_logger.log(AP_meter.value())
+        for index, value in enumerate(AP_meter.value()):
+            average_precision_logger.log(state['epoch'], value, name=str(index))
 
         print('[Epoch %d] Testing Loss: %.4f (Accuracy: %.2f%%)' % (
             state['epoch'], meter_loss.value()[0], meter_accuracy.value()[0]))
