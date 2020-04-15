@@ -561,9 +561,11 @@ if __name__ == "__main__":
                     break
             except IndexError:
                 pass
+        """
         if sum(counter_by_class_list) < num_classes*sample_per_class:
             print("WARNING: Less samples per class than defined in parameters.")
             print("counter_by_class_list: ", counter_by_class_list)
+        """
         return torch.cat(new_data, dim=0), torch.cat(new_labels, dim=0)
 
 
@@ -580,6 +582,9 @@ if __name__ == "__main__":
                                 args.get('smax'), NUM_CLASSES)
             print('(Mode: %s) Number of samples in dataset: %d' % (
                     mode, data.shape[0]))
+        else:
+            data, labels = limit_dataset_by_max_samples_per_class(data, labels,
+                                float("inf"), NUM_CLASSES)
         tensor_dataset = tnt.dataset.TensorDataset([data, labels])
         """
         print("-----------------------------------------")
