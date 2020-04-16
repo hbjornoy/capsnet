@@ -753,9 +753,11 @@ if __name__ == "__main__":
 
 
     # delete processed files
+    """
     if os.path.exists('data/Omniglot_dataset/processed/omniglot_training.pt'):
         os.remove('data/Omniglot_dataset/processed/omniglot_training.pt')
     if os.path.exists('data/Omniglot_dataset/processed/omniglot_test.pt'):
         os.remove('data/Omniglot_dataset/processed/omniglot_test.pt')
     if os.path.exists('symbol_dataset/'):
         shutil.rmtree('symbol_dataset/')
+    """
