@@ -322,7 +322,7 @@ class CapsuleLoss(nn.Module):
         margin_loss = labels * left + 0.5 * (1. - labels) * right
         margin_loss = margin_loss.mean()
 
-        return (margin_loss + args.get('recw') * reconstruction_loss) / images.size(0)
+        return (margin_loss + args.get('recw') * reconstruction_loss) # / images.size(0) #removed because averaged the reconstructionloss
 
     def crossentropy(self, images, labels, classes, reconstruction_loss):
         # Coeff scales the loss to the approx. the same magnitude as orig. -> reconstruction effect is approx. the same
@@ -621,12 +621,6 @@ if __name__ == "__main__":
         print("labels.max(): ", labels.max())
         print("-----------------------------------------")
         """
-        print(class_to_idx['ULOG@26'])
-        print(idx_to_class[1622])
-        print(type(class_to_idx))
-        print(type(idx_to_class))
-        print(len(class_to_idx))
-        print(len(idx_to_class))
         if not mode and dataset_used == 'MNIST':
             return tensor_dataset.parallel(batch_size=50, num_workers=4, shuffle=mode)
         else:
