@@ -372,7 +372,9 @@ if __name__ == "__main__":
     #global args
     #args = vars(parser.parse_args())
     global class_to_idx
+    global idx_to_class
     class_to_idx = None
+    idx_to_class = None
     print(args)
     args = {k: v for k, v in args.items() if v is not None} # removes unused arguments
     is_valid_args(**args)
@@ -507,10 +509,12 @@ if __name__ == "__main__":
         def process(self):
 
             global class_to_idx
+            global idx_to_class
             
             if self._check_exists():
                 training_set = ImageFolder(root=self.raw_training_folder, transform=None)
                 class_to_idx = training_set.class_to_idx
+                idx_to_class = {val: key for key, val in training_set.class_to_idx.items()}
                 return
 
             makedir_exist_ok(self.processed_folder)
@@ -544,6 +548,7 @@ if __name__ == "__main__":
                     with open(os.path.join(self.processed_folder, self.test_file), 'wb') as f:
                         torch.save((data, labels), f)
             class_to_idx = training_set.class_to_idx
+            idx_to_class = {val: key for key, val in training_set.class_to_idx.items()}
 
             print('Done!')
 
@@ -616,7 +621,12 @@ if __name__ == "__main__":
         print("labels.max(): ", labels.max())
         print("-----------------------------------------")
         """
-        print(class_to_idx)
+        print(class_to_idx['ULOG@26'])
+        print(idx_to_class[1622])
+        print(type(class_to_idx))
+        print(type(idx_to_class))
+        print(len(class_to_idx))
+        print(len(idx_to_class))
         if not mode and dataset_used == 'MNIST':
             return tensor_dataset.parallel(batch_size=50, num_workers=4, shuffle=mode)
         else:
