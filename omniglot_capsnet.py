@@ -427,8 +427,8 @@ if __name__ == "__main__":
                                                                                 'xlabel': 'Class',
                                                                                 'ylabel': 'Average precision',
                                                                                 'layoutopts': layoutoptions})
-    confusion_classnames = [idx_to_class[class_index] for class_index in range(NUM_CLASSES)]
-    confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': confusion_classnames, 'rownames': confusion_classnames})
+    #confusion_classnames = [idx_to_class[class_index] for class_index in range(NUM_CLASSES)]
+    #confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': confusion_classnames, 'rownames': confusion_classnames})
     ground_truth_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Ground Truth'})
     reconstruction_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction ' + visdom_env})
     reconstruction_error_logger = VisdomLogger('image', env=visdom_env, opts={'title': 'Reconstruction Error ' + visdom_env})
@@ -593,6 +593,9 @@ if __name__ == "__main__":
         labels = getattr(dataset, 'train_labels' if mode else 'test_labels')
 
         if mode:
+            confusion_classnames = [idx_to_class[class_index] for class_index in range(NUM_CLASSES)]
+            global confusion_logger
+            confusion_logger = VisdomLogger('heatmap', env=visdom_env, opts={'title': 'Confusion matrix', 'columnnames': confusion_classnames, 'rownames': confusion_classnames})
             data, labels = limit_dataset_by_max_samples_per_class(data, labels,
                                 args.get('smax'), NUM_CLASSES)
             print('(Mode: %s) Number of samples in dataset: %d' % (
@@ -705,9 +708,11 @@ if __name__ == "__main__":
             engine.test(processor_mnist, get_iterator(False, dataset_used=dataset_used))
         test_loss_logger.log(state['epoch'], meter_loss.value()[0])
         test_accuracy_logger.log(state['epoch'], meter_accuracy.value()[0])
+        global confusion_logger
         confusion_logger.log(confusion_meter.value())
         for index, value in enumerate(AP_meter.value()):
-            average_precision_logger.log(state['epoch'], value, name=str(index)+": "+idx_to_class(index))
+            average_precision_logger.log(state['epoch'], value,
+                    name=str(index)+": "+idx_to_class[index])
 
         print('[Epoch %d] Testing Loss: %.4f (Accuracy: %.2f%%)' % (
             state['epoch'], meter_loss.value()[0], meter_accuracy.value()[0]))
