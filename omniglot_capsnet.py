@@ -42,6 +42,8 @@ parser.add_argument('-k3', type=float, metavar='k3',
                     help='sig: ex:1')
 parser.add_argument('-t1', type=float, metavar='t1',
                     help='tanh: ex:1')
+    parser.add_argument('-net', type=str, default='Capsule', metavar='network',
+                    help='The type of network used')
 parser.add_argument('-d', type=str, default='Omniglot', metavar='dataset_used',
                     help='Dataset used. Possible datasets: Omniglot, MNIST')
 parser.add_argument('-c', type=int, metavar='num_classes',
@@ -210,6 +212,53 @@ class Sigmoid_scaling(torch.nn.Module):
     def forward(self, l2):
         return  (1 / (1 + self.k1*torch.exp(self.k2-self.k3*l2))) #* (abs(l2)**self.a1 / (abs(l2)**self.a1 + self.a2))
 
+class CNN(nn.Module):
+    def __init__(self, **args):
+        super(CNN, self).__init__()
+        if args.get('d') == 'Omniglot':
+            self.feature_extractor = nn.Sequential(
+                nn.Conv2d(in_channels=1, out_channels=128, kernel_size=9, stride=2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=11, stride=2),
+                nn.ReLU(inplace=True)
+            )
+            self.num_pixels = 105 * 105  # 11025
+        elif args.get('d') == 'MNIST':
+            self.feature_extractor = nn.Sequential(
+                nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=1),
+                nn.ReLU(inplace=True)
+            )
+            self.num_pixels = 28 * 28  # 784
+
+        self.conv1 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5, stride=1)
+        self.conv2 = nn.Conv2d(in_channels=512, out_channels=1042, kernel_size=5, stride=1)
+        self.classifier = nn.Sequential(
+            nn.Linear(12*12*1042, 5000),
+            nn.ReLU(inplace=True),
+            nn.Linear(5000, NUM_CLASSES),
+            nn.ReLU(inplace=True),
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(12*12*1042, 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, self.num_pixels),
+            nn.Sigmoid()  # hmmm
+        )
+
+        def forward(self, x, y=None):
+            x = self.feature_extractor(x)
+            x = self.conv1(x)
+            features = self.conv2(x)
+            flat_features = features.reshape(features.size(0), -1)
+            x = self.classifier(flat_features)
+            classes = F.softmax(x, dim=-1)
+
+            reconstructions = self.decoder(flat_features)
+            return classes, reconstructions
+
 
 
 class CapsuleNet(nn.Module):
@@ -362,7 +411,10 @@ if __name__ == "__main__":
     else:
         visdom_env = '-'.join(['%s' % value[:3] if type(value) is str else '%s:%s' % (key, int(value)) for (key, value) in args.items()])
     arg_loss = args.pop('loss', False)
-    model = CapsuleNet(**args)
+    if args.get('net') == 'CNN':
+        model = CNN(**args)
+    else:
+        model = CapsuleNet(**args)
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
     if torch.cuda.is_available():
         model.cuda()
