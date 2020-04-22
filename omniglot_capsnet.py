@@ -42,7 +42,7 @@ parser.add_argument('-k3', type=float, metavar='k3',
                     help='sig: ex:1')
 parser.add_argument('-t1', type=float, metavar='t1',
                     help='tanh: ex:1')
-    parser.add_argument('-net', type=str, default='Capsule', metavar='network',
+parser.add_argument('-net', type=str, default='Capsule', metavar='network',
                     help='The type of network used')
 parser.add_argument('-d', type=str, default='Omniglot', metavar='dataset_used',
                     help='Dataset used. Possible datasets: Omniglot, MNIST')
@@ -248,16 +248,15 @@ class CNN(nn.Module):
             nn.Sigmoid()  # hmmm
         )
 
-        def forward(self, x, y=None):
-            x = self.feature_extractor(x)
-            x = self.conv1(x)
-            features = self.conv2(x)
-            x = features.reshape(features.size(0), -1)
-            classes = self.classifier(x)
-            classes = F.softmax(classes, dim=-1)
+    def forward(self, x, y=None):
+        x = self.feature_extractor(x)
+        x = self.conv1(x)
+        features = self.conv2(x)
+        x = features.reshape(features.size(0), -1)
+        classes = self.classifier(x)
+        classes = F.softmax(classes, dim=-1)
 
-            return classes
-
+        return classes
 
 
 class CapsuleNet(nn.Module):
@@ -307,7 +306,6 @@ class CapsuleNet(nn.Module):
             # In all batches, get the most active capsule.
             _, max_length_indices = classes.max(dim=1)
             y = Variable(torch.eye(NUM_CLASSES)).cuda().index_select(dim=0, index=max_length_indices.data)
-
         reconstructions = self.decoder((x * y[:, :, None]).view(x.size(0), -1))
 
         return classes, reconstructions
