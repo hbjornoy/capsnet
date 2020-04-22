@@ -255,8 +255,8 @@ class CNN(nn.Module):
         x = features.reshape(features.size(0), -1)
         classes = self.classifier(x)
         classes = F.softmax(classes, dim=-1)
-
-        return classes
+        reconstructions = None
+        return classes, reconstructions
 
 
 class CapsuleNet(nn.Module):
@@ -361,12 +361,14 @@ class CapsuleLoss(nn.Module):
 
 class CNNLoss(nn.Module):
     def __init__(self, **kwargs ):
-        super(CapsuleLoss, self).__init__()
+        super(CNNLoss, self).__init__()
 
-    def forward(self, labels, classes):
+    def forward(self, labels, classes, **args):
 
         s_coeff = 20.85
         _, labels = labels.max(dim=1)
+        print(classes.shape)
+        print(labels.shape)
         return (s_coeff * nn.functional.cross_entropy(classes, labels))
 
 
@@ -683,7 +685,7 @@ if __name__ == "__main__":
         else:
             classes, reconstructions = model(data)
 
-        loss = loss_function(data, labels, classes, reconstructions)
+        loss = loss_function(data=data, labels=labels, classes=classes, reconstructions=reconstructions)
 
         return loss, classes
 
@@ -703,7 +705,7 @@ if __name__ == "__main__":
         else:
             classes, reconstructions = model(data)
 
-        loss = loss_function(data, labels, classes, reconstructions)
+        loss = loss_function(data=data, labels=labels, classes=classes, reconstructions=reconstructions)
 
         return loss, classes
 
