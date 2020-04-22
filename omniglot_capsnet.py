@@ -252,12 +252,11 @@ class CNN(nn.Module):
             x = self.feature_extractor(x)
             x = self.conv1(x)
             features = self.conv2(x)
-            flat_features = features.reshape(features.size(0), -1)
-            x = self.classifier(flat_features)
-            classes = F.softmax(x, dim=-1)
+            x = features.reshape(features.size(0), -1)
+            classes = self.classifier(x)
+            classes = F.softmax(classes, dim=-1)
 
-            reconstructions = self.decoder(flat_features)
-            return classes, reconstructions
+            return classes
 
 
 
@@ -361,6 +360,17 @@ class CapsuleLoss(nn.Module):
     def mse(self, images, labels, classes, reconstruction_loss):
         s_coeff = 679.8
         return (s_coeff*nn.functional.mse_loss(classes, labels) + args.get('recw') * reconstruction_loss) / images.size(0)
+
+class CNNLoss(nn.Module):
+    def __init__(self, **kwargs ):
+        super(CapsuleLoss, self).__init__()
+
+    def forward(self, labels, classes):
+
+        s_coeff = 20.85
+        _, labels = labels.max(dim=1)
+        return (s_coeff * nn.functional.cross_entropy(classes, labels))
+
 
 
 def is_valid_args(**kwargs):
@@ -466,7 +476,10 @@ if __name__ == "__main__":
                                                                                 'legend': [visdom_env],
                                                                                 'layoutopts': layoutoptions})
 
-    capsule_loss = CapsuleLoss(loss_func=arg_loss)
+    if args.get('net') == 'Capsule':
+        loss_function = CapsuleLoss(loss_func=arg_loss)
+    elif args.get('net') == 'CNN':
+        loss_function = CNNLoss()
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -672,7 +685,7 @@ if __name__ == "__main__":
         else:
             classes, reconstructions = model(data)
 
-        loss = capsule_loss(data, labels, classes, reconstructions)
+        loss = loss_function(data, labels, classes, reconstructions)
 
         return loss, classes
 
@@ -692,7 +705,7 @@ if __name__ == "__main__":
         else:
             classes, reconstructions = model(data)
 
-        loss = capsule_loss(data, labels, classes, reconstructions)
+        loss = loss_function(data, labels, classes, reconstructions)
 
         return loss, classes
 
