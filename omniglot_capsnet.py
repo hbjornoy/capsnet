@@ -230,32 +230,30 @@ class CNN(nn.Module):
             )
             self.num_pixels = 28 * 28  # 784
 
-        self.conv1 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5, stride=1)
-        self.conv2 = nn.Conv2d(in_channels=512, out_channels=1042, kernel_size=5, stride=1)
+        self.conv1 = nn.Conv2d(in_channels=256, out_channels=256,
+                kernel_size=4, stride=2)
+        self.conv2 = nn.Conv2d(in_channels=256, out_channels=512,
+                kernel_size=3, stride=2)
+        self.dropout = nn.Dropout(p=0.4)
         self.classifier = nn.Sequential(
-            nn.Linear(12*12*1042, 5000),
+                nn.Linear(4*4*512, 500),
             nn.ReLU(inplace=True),
-            nn.Linear(5000, NUM_CLASSES),
+            nn.Linear(500, NUM_CLASSES),
             nn.ReLU(inplace=True),
-        )
-
-        self.decoder = nn.Sequential(
-            nn.Linear(12*12*1042, 512),
-            nn.ReLU(inplace=True),
-            nn.Linear(512, 1024),
-            nn.ReLU(inplace=True),
-            nn.Linear(1024, self.num_pixels),
-            nn.Sigmoid()  # hmmm
         )
 
     def forward(self, x, y=None):
         x = self.feature_extractor(x)
         x = self.conv1(x)
         features = self.conv2(x)
-        x = features.reshape(features.size(0), -1)
-        classes = self.classifier(x)
+        features = self.dropout(features)
+        features = features.reshape(features.size(0), -1)
+        classes = self.classifier(features)
         classes = F.softmax(classes, dim=-1)
         reconstructions = None
+        #print(x.shape)
+        #print(features.shape)
+        #print(classes)
         return classes, reconstructions
 
 
@@ -365,10 +363,8 @@ class CNNLoss(nn.Module):
 
     def forward(self, labels, classes, **args):
 
-        s_coeff = 20.85
+        s_coeff = 0.0217 #20.85
         _, labels = labels.max(dim=1)
-        print(classes.shape)
-        print(labels.shape)
         return (s_coeff * nn.functional.cross_entropy(classes, labels))
 
 
@@ -431,7 +427,7 @@ if __name__ == "__main__":
 
     print("# parameters:", sum(param.numel() for param in model.parameters()))
 
-    optimizer = Adam(model.parameters())
+    optimizer = Adam(model.parameters())#, lr=0.00001)
 
     engine = Engine()
     meter_loss = tnt.meter.AverageValueMeter()
@@ -685,7 +681,7 @@ if __name__ == "__main__":
         else:
             classes, reconstructions = model(data)
 
-        loss = loss_function(data=data, labels=labels, classes=classes, reconstructions=reconstructions)
+        loss = loss_function(images=data, labels=labels, classes=classes, reconstructions=reconstructions)
 
         return loss, classes
 
@@ -705,7 +701,7 @@ if __name__ == "__main__":
         else:
             classes, reconstructions = model(data)
 
-        loss = loss_function(data=data, labels=labels, classes=classes, reconstructions=reconstructions)
+        loss = loss_function(images=data, labels=labels, classes=classes, reconstructions=reconstructions)
 
         return loss, classes
 
@@ -761,6 +757,9 @@ if __name__ == "__main__":
         torch.save(model.state_dict(), 'epochs/epoch_%d.pt' % state['epoch'])
 
         # Reconstruction visualization.
+        if args.get('net') !=  'Capsule':
+            return
+
         if dataset_used == "Omniglot":
             test_sample = next(iter(get_iterator(False, dataset_used)))
             ground_truth = test_sample[0].unsqueeze(1).float()
