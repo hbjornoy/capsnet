@@ -56,7 +56,8 @@ parser.add_argument('-smax', type=int, metavar='SAMPLE_PER_CLASS',
                     help='Limit the training samples per class')
 parser.add_argument('-recw', type=float, default=0.0005, metavar='SAMPLE_PER_CLASS',
                     help='Limit the training samples per class')
-
+parser.add_argument('-lr', type=float, metavar='learning_rate',
+                    help='Limit the training samples per class')
 global args
 args = vars(parser.parse_args())
 BATCH_SIZE = args.get('b') #100
@@ -66,6 +67,11 @@ else:
     NUM_CLASSES = 1623 if args.get('d') == 'Omniglot' else 10
 NUM_EPOCHS = args.get('e')
 NUM_ROUTING_ITERATIONS = 3
+
+if args.get('lr') is None:
+    if args.get('net') == 'Capsule': args['lr'] = 0.001
+    if args.get('net') == 'CNN': args['lr'] = 0.00001
+
 
 
 
@@ -251,9 +257,6 @@ class CNN(nn.Module):
         classes = self.classifier(features)
         classes = F.softmax(classes, dim=-1)
         reconstructions = None
-        #print(x.shape)
-        #print(features.shape)
-        #print(classes)
         return classes, reconstructions
 
 
@@ -415,7 +418,7 @@ if __name__ == "__main__":
     if 'name' in args:
         visdom_env = '-'.join([args['act'][:3], args['loss'][:3], args.pop('name', False)])
     else:
-        visdom_env = '-'.join(['%s' % value[:3] if type(value) is str else '%s:%s' % (key, int(value)) for (key, value) in args.items()])
+        visdom_env = '-'.join(['%s' % value[:3] if type(value) is str else '%s:%s' % (key, value) for (key, value) in args.items()])
     arg_loss = args.pop('loss', False)
     if args.get('net') == 'CNN':
         model = CNN(**args)
@@ -424,10 +427,17 @@ if __name__ == "__main__":
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
     if torch.cuda.is_available():
         model.cuda()
+    
+    sum_params = 0
+    row_format ="{:>26}" * (2)
+    print(row_format.format("layer", "#parameters"))
+    for name, param in model.named_parameters(): 
+        if param.requires_grad: 
+            sum_params += param.numel()
+            print(row_format.format(name, param.numel()))
+    print(row_format.format("Total:", sum_params))
 
-    print("# parameters:", sum(param.numel() for param in model.parameters()))
-
-    optimizer = Adam(model.parameters())#, lr=0.00001)
+    optimizer = Adam(model.parameters(), lr=args.get('lr'))
 
     engine = Engine()
     meter_loss = tnt.meter.AverageValueMeter()
