@@ -396,7 +396,7 @@ if __name__ == "__main__":
     
     import torchnet as tnt
     from torchnet.engine import Engine
-    from torchnet.logger import VisdomPlotLogger, VisdomLogger
+    from torchnet.logger import VisdomPlotLogger, VisdomLogger, VisdomTextLogger
     
     from torchvision.utils import make_grid
     from torchvision.datasets import MNIST, ImageFolder
@@ -428,15 +428,29 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         model.cuda()
     
+    info_logger = VisdomTextLogger(update_type='APPEND', env=visdom_env,
+            opts={'title': 'Info'})
+    table_html = '<table width="50%" valign="top"><tbody>'
+    table_html += '<tr><td>&nbsp;Argument</td><td>&nbsp;Value</td></tr>'
+    for parameter, value in args.items():
+        table_html += '<tr><td>&nbsp;' + parameter + '</td><td>&nbsp;' + str(value) + '</td></tr>'
+    info_logger.log(table_html + '</tbody></table>')
+
     sum_params = 0
     row_format ="{:>26}" * (2)
     print(row_format.format("layer", "#parameters"))
-    for name, param in model.named_parameters(): 
-        if param.requires_grad: 
+    table_html = '<table width="50%" valign="top"><tbody>'
+    table_html += '<tr><td>&nbsp;layer</td><td>&nbsp;#parameters</td></tr>'
+    
+    for name, param in model.named_parameters():
+        if param.requires_grad:
             sum_params += param.numel()
             print(row_format.format(name, param.numel()))
+            table_html += '<tr><td>&nbsp;' + name + '</td><td>&nbsp;' + str(param.numel()) + '</td></tr>'
     print(row_format.format("Total:", sum_params))
-
+    info_logger.log(table_html + '<tr><td>&nbsp;Total:</td><td>&nbsp;' + str(sum_params)
+    + '</td></tr></tbody></table>')
+    
     optimizer = Adam(model.parameters(), lr=args.get('lr'))
 
     engine = Engine()
