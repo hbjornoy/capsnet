@@ -8,6 +8,7 @@ import sys
 import os
 import shutil
 import time
+import datetime
 import argparse
 sys.setrecursionlimit(15000)
 
@@ -405,7 +406,9 @@ if __name__ == "__main__":
     from torchvision.datasets.utils import makedir_exist_ok
 
     from create_symbols_dataset import create_symbols_dataset
-
+    from pynvml import *
+    nvmlInit()
+    
     #global args
     #args = vars(parser.parse_args())
     global class_to_idx
@@ -427,9 +430,15 @@ if __name__ == "__main__":
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
     if torch.cuda.is_available():
         model.cuda()
+
+    stats_logger = VisdomTextLogger(update_type='APPEND', env=visdom_env,
+            opts={'title': 'Statistics'}) 
+    global gpu_load
+    gpu_load = 0 
     
     info_logger = VisdomTextLogger(update_type='APPEND', env=visdom_env,
             opts={'title': 'Info'})
+    
     table_html = '<table width="50%" valign="top"><tbody>'
     table_html += '<tr><td>&nbsp;Argument</td><td>&nbsp;Value</td></tr>'
     for parameter, value in args.items():
@@ -504,7 +513,15 @@ if __name__ == "__main__":
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
+    def get_gpu_usage():
+        deviceCount = nvmlDeviceGetCount()
+        for dev_id in range(nvmlDeviceGetCount()):
+            handle = nvmlDeviceGetHandleByIndex(dev_id)
+            for proc in nvmlDeviceGetComputeRunningProcesses(handle):
+                if proc.pid == os.getpid():
+                    return proc.usedGpuMemory/1000000
 
+    
     class Omniglot_dataset(torchvision.datasets.vision.VisionDataset):
         training_file = 'omniglot_training.pt'
         test_file = 'omniglot_test.pt'
@@ -755,6 +772,10 @@ if __name__ == "__main__":
 
 
     def on_end_epoch(state):
+        if state['epoch'] % 30 == 1:
+           global gpu_load
+           gpu_load = max(gpu_load, get_gpu_usage())
+            
         dataset_used = args.get('d')
         print('[Epoch %d] Training Loss: %.4f (Accuracy: %.2f%%)' % (
             state['epoch'], meter_loss.value()[0], meter_accuracy.value()[0]))
@@ -816,13 +837,16 @@ if __name__ == "__main__":
     engine.hooks['on_start_epoch'] = on_start_epoch
     engine.hooks['on_end_epoch'] = on_end_epoch
 
+    start_time = time.time()
     if args.get('d') == "Omniglot":
         engine.train(processor_omniglot, get_iterator(True, dataset_used='Omniglot'), maxepoch=NUM_EPOCHS, optimizer=optimizer)
     else:
         idx_to_class = {i:i for i in range(NUM_CLASSES)}
         engine.train(processor_mnist, get_iterator(True, dataset_used='MNIST'), maxepoch=NUM_EPOCHS, optimizer=optimizer)
+    end_time = time.time()
 
-
+    stats_logger.log("GPU load: " + str(int(gpu_load)) + "MiB")
+    stats_logger.log("Time used(HH:MM:SS): "+ str(datetime.timedelta(seconds=int(end_time-start_time))) )
     # delete processed files
     """
     if os.path.exists('data/Omniglot_dataset/processed/omniglot_training.pt'):
