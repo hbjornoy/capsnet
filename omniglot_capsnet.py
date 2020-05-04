@@ -260,6 +260,46 @@ class CNN(nn.Module):
         reconstructions = None
         return classes, reconstructions
 
+class Sabour_baseline(nn.Module):
+    def __init__(self, **args):
+        super(Sabour_baseline, self).__init__()
+        if args.get('d') == 'Omniglot':
+            self.feature_extractor = nn.Sequential(
+                nn.Conv2d(in_channels=1, out_channels=128, kernel_size=9, stride=2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=11, stride=2),
+                nn.ReLU(inplace=True)
+            )
+            self.num_pixels = 105 * 105  # 11025
+        elif args.get('d') == 'MNIST':
+            self.feature_extractor = nn.Sequential(
+                nn.Conv2d(in_channels=1, out_channels=256, kernel_size=5, stride=1),
+                nn.ReLU(inplace=True)
+            )
+            self.num_pixels = 28 * 28  # 784
+
+        self.conv1 = nn.Conv2d(in_channels=256, out_channels=256,
+                kernel_size=5, stride=1)
+        self.conv2 = nn.Conv2d(in_channels=256, out_channels=128,
+                kernel_size=5, stride=1)
+        #self.dropout = nn.Dropout(p=0.4)
+        self.classifier = nn.Sequential(
+            nn.Linear(16*16*128, 328),
+            nn.ReLU(inplace=True),
+            nn.Linear(328, NUM_CLASSES)
+        )
+
+    def forward(self, x, y=None):
+        x = self.feature_extractor(x)
+        x = self.conv1(x)
+        features = self.conv2(x)
+        features = self.dropout(features)
+        features = features.reshape(features.size(0), -1)
+        classes = self.classifier(features)
+        classes = F.softmax(classes, dim=-1)
+        reconstructions = None
+        return classes, reconstructions
+
 
 class CapsuleNet(nn.Module):
     def __init__(self, **args):
@@ -425,6 +465,8 @@ if __name__ == "__main__":
     arg_loss = args.pop('loss', False)
     if args.get('net') == 'CNN':
         model = CNN(**args)
+    elif args.get('net') == 'Sabour':
+        model = Sabour_baseline(**args)
     else:
         model = CapsuleNet(**args)
     # model.load_state_dict(torch.load('epochs/epoch_327.pt'))
@@ -507,7 +549,7 @@ if __name__ == "__main__":
 
     if args.get('net') == 'Capsule':
         loss_function = CapsuleLoss(loss_func=arg_loss)
-    elif args.get('net') == 'CNN':
+    elif args.get('net') == 'CNN' or args.get('net') == 'Sabour':
         loss_function = CNNLoss()
 
 
