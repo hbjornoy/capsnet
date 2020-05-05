@@ -72,7 +72,7 @@ NUM_ROUTING_ITERATIONS = 3
 if args.get('lr') is None:
     if args.get('net') == 'Capsule': args['lr'] = 0.001
     if args.get('net') == 'CNN': args['lr'] = 0.00001
-
+    if args.get('net') == 'Sabour': args['lr'] = 0.00001
 
 
 
@@ -293,7 +293,7 @@ class Sabour_baseline(nn.Module):
         x = self.feature_extractor(x)
         x = self.conv1(x)
         features = self.conv2(x)
-        features = self.dropout(features)
+        #features = self.dropout(features)
         features = features.reshape(features.size(0), -1)
         classes = self.classifier(features)
         classes = F.softmax(classes, dim=-1)
