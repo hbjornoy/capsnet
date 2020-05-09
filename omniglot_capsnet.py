@@ -59,6 +59,8 @@ parser.add_argument('-recw', type=float, default=0.0005, metavar='SAMPLE_PER_CLA
                     help='Limit the training samples per class')
 parser.add_argument('-lr', type=float, metavar='learning_rate',
                     help='Limit the training samples per class')
+parser.add_argument('-cc', type=int, metavar='class_channels',
+                    help='Dictate the dimension of the class capsules')
 global args
 args = vars(parser.parse_args())
 BATCH_SIZE = args.get('b') #100
@@ -74,7 +76,12 @@ if args.get('lr') is None:
     if args.get('net') == 'CNN': args['lr'] = 0.00001
     if args.get('net') == 'Sabour': args['lr'] = 0.00001
 
+if args.get('cc') is None:
 
+    if NUM_CLASSES > 500:
+        args['cc'] = 8
+    else:
+        args['cc'] = 16
 
 def softmax(input, dim=1):
     transposed_input = input.transpose(dim, len(input.size()) - 1)
@@ -265,11 +272,13 @@ class Sabour_baseline(nn.Module):
         super(Sabour_baseline, self).__init__()
         if args.get('d') == 'Omniglot':
             self.feature_extractor = nn.Sequential(
-                nn.Conv2d(in_channels=1, out_channels=128, kernel_size=9, stride=2),
+                nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=2),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=11, stride=2),
+                nn.Conv2d(in_channels=256, out_channels=256, kernel_size=9, stride=2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=256, out_channels=128, kernel_size=6, stride=1),
                 nn.ReLU(inplace=True)
-            )
+                )
             self.num_pixels = 105 * 105  # 11025
         elif args.get('d') == 'MNIST':
             self.feature_extractor = nn.Sequential(
@@ -305,9 +314,11 @@ class CapsuleNet(nn.Module):
         super(CapsuleNet, self).__init__()
         if args.get('d')=='Omniglot':
             self.feature_extractor = nn.Sequential(
-                nn.Conv2d(in_channels=1, out_channels=128, kernel_size=9, stride=2),
+                nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=2),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=11, stride=2),
+                nn.Conv2d(in_channels=256, out_channels=256, kernel_size=9, stride=2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=256, out_channels=256, kernel_size=2, stride=1),
                 nn.ReLU(inplace=True)
             )
             self.num_pixels = 105*105 #11025
@@ -320,7 +331,7 @@ class CapsuleNet(nn.Module):
         self.primary_capsules = CapsuleLayer(num_capsules=8, num_route_nodes=-1, in_channels=256, out_channels=32,
                                              kernel_size=9, stride=2, **args)
         self.digit_capsules = CapsuleLayer(num_capsules=NUM_CLASSES, num_route_nodes= 32 * 6 * 6, in_channels=8,
-                                           out_channels=16, **args)
+                                           out_channels=args.get('cc'), **args)
 
         self.decoder = nn.Sequential(
             nn.Linear(16 * NUM_CLASSES, 512),
