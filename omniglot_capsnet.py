@@ -70,6 +70,7 @@ else:
     NUM_CLASSES = 1623 if args.get('d') == 'Omniglot' else 10
 NUM_EPOCHS = args.get('e')
 NUM_ROUTING_ITERATIONS = 3
+SCALED_LOSS_COEFF = 100
 
 if args.get('lr') is None:
     if args.get('net') == 'Capsule': args['lr'] = 0.001
@@ -832,7 +833,8 @@ if __name__ == "__main__":
         print('[Epoch %d] Training Loss: %.4f (Accuracy: %.2f%%)' % (
             state['epoch'], meter_loss.value()[0], meter_accuracy.value()[0]))
 
-        train_loss_logger.log(state['epoch'], meter_loss.value()[0])
+        train_loss_logger.log(state['epoch'],
+                meter_loss.value()[0]*SCALED_LOSS_COEFF)
         train_error_logger.log(state['epoch'], meter_accuracy.value()[0])
 
         reset_meters()
@@ -840,7 +842,8 @@ if __name__ == "__main__":
             engine.test(processor_omniglot, get_iterator(False, dataset_used=dataset_used))
         else:
             engine.test(processor_mnist, get_iterator(False, dataset_used=dataset_used))
-        test_loss_logger.log(state['epoch'], meter_loss.value()[0])
+        test_loss_logger.log(state['epoch'],
+                meter_loss.value()[0]*SCALED_LOSS_COEFF)
         test_accuracy_logger.log(state['epoch'], meter_accuracy.value()[0])
         global confusion_logger
         confusion_logger.log(confusion_meter.value())
@@ -878,7 +881,8 @@ if __name__ == "__main__":
         #images = images.view(reconstructions.size()[0], -1)
 
         reconstruction_loss_logger.log(state['epoch'],
-                nn.MSELoss(size_average=True)(reconstruction, ground_truth)) # log reconstruction loss on unseen photos
+                nn.MSELoss(size_average=True)(reconstruction,
+                    ground_truth)*SCALED_LOSS_COEFF) # log reconstruction loss on unseen photos
 
     # def on_start(state):
     #     state['epoch'] = 327
