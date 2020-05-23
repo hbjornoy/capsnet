@@ -335,7 +335,7 @@ class CapsuleNet(nn.Module):
                                            out_channels=args.get('cc'), **args)
 
         self.decoder = nn.Sequential(
-            nn.Linear(16 * NUM_CLASSES, 512),
+            nn.Linear(args.get('cc') * NUM_CLASSES, 512),
             nn.ReLU(inplace=True),
             nn.Linear(512, 1024),
             nn.ReLU(inplace=True),
