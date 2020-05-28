@@ -349,8 +349,8 @@ class CapsuleNet(nn.Module):
         x = self.digit_capsules(x).squeeze().transpose(0, 1)
 
         # fix for last_batch beeing only one sample
-        #if len(list(x.size())) < 3:
-        #    x = x.transpose(0,1).unsqueeze_(0)
+        if len(list(x.size())) < 3:
+            x = x.transpose(0,1).unsqueeze_(0)
 
         classes = (x ** 2).sum(dim=-1) ** 0.5
         classes = F.softmax(classes, dim=-1)
